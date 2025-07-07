@@ -1,4 +1,3 @@
-import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { blogPosts } from '../data/blogPosts';
 
@@ -8,7 +7,7 @@ const BlogPost = () => {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-black text-white pt-20">
+      <div className="min-h-screen text-white pt-20">
         <div className="max-w-4xl mx-auto px-6 py-20">
           <h1 className="text-4xl font-light mb-8">Post Not Found</h1>
           <Link to="/" className="text-gray-400 hover:text-white transition-colors">
@@ -20,7 +19,7 @@ const BlogPost = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pt-20">
+    <div className="min-h-screen text-white pt-20">
       <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Navigation */}
         <div className="mb-8">

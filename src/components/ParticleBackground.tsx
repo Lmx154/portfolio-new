@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 declare global {
   interface Window {
@@ -7,8 +7,6 @@ declare global {
 }
 
 const ParticleBackground = () => {
-  const particlesRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     // Load particles.js script
     const script = document.createElement('script');
@@ -18,7 +16,7 @@ const ParticleBackground = () => {
         window.particlesJS('particles-js', {
           particles: {
             number: {
-              value: 150,
+              value: 200,
               density: {
                 enable: true,
                 value_area: 800
@@ -35,11 +33,11 @@ const ParticleBackground = () => {
               }
             },
             opacity: {
-              value: 0.8,
+              value: 0.9,
               random: true,
               anim: {
                 enable: true,
-                speed: 0.2,
+                speed: 0.5,
                 opacity_min: 0.3,
                 sync: false
               }
@@ -49,8 +47,8 @@ const ParticleBackground = () => {
               random: true,
               anim: {
                 enable: true,
-                speed: 0.3,
-                size_min: 0.8,
+                speed: 1,
+                size_min: 0.5,
                 sync: false
               }
             },
@@ -59,10 +57,10 @@ const ParticleBackground = () => {
             },
             move: {
               enable: true,
-              speed: 0.8,
-              direction: 'left',
-              random: false,
-              straight: true,
+              speed: 0.3,
+              direction: 'none',
+              random: true,
+              straight: false,
               out_mode: 'out',
               bounce: false,
               attract: {
@@ -89,15 +87,21 @@ const ParticleBackground = () => {
     document.head.appendChild(script);
 
     return () => {
-      document.head.removeChild(script);
+      // Cleanup
+      const existingScript = document.querySelector('script[src*="particles.js"]');
+      if (existingScript) {
+        document.head.removeChild(existingScript);
+      }
     };
   }, []);
 
   return (
     <div 
       id="particles-js" 
-      ref={particlesRef}
-      className="fixed inset-0 z-0 pointer-events-none"
+      className="fixed inset-0 z-0"
+      style={{
+        background: '#000000'
+      }}
     />
   );
 };

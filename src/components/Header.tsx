@@ -1,5 +1,4 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 const Header = () => {
   const location = useLocation();
@@ -18,21 +17,26 @@ const Header = () => {
     }
   };
 
+  const scrollToTop = () => {
+    if (!isHomePage) {
+      // If not on home page, navigate to home first
+      window.location.href = '/';
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-gray-800">
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <Link to="/" className="text-xl font-light text-white tracking-wider hover:text-gray-300 transition-colors">
-            PORTFOLIO
-          </Link>
-          
-          <nav className="hidden md:flex space-x-8">
-            <Link
-              to="/"
+          <nav className="flex space-x-8">
+            <button
+              onClick={scrollToTop}
               className="text-gray-300 hover:text-white transition-colors font-light"
             >
               HOME
-            </Link>
+            </button>
             <button
               onClick={() => scrollToSection('blog')}
               className="text-gray-300 hover:text-white transition-colors font-light"

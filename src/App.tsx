@@ -11,11 +11,13 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/blog/:id" element={
-            <>
+            <div className="relative">
               <ParticleBackground />
-              <Header />
-              <BlogPost />
-            </>
+              <div className="relative z-10">
+                <Header />
+                <BlogPost />
+              </div>
+            </div>
           } />
         </Routes>
       </div>
