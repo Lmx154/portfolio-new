@@ -4,7 +4,6 @@ import Hero from './Hero';
 import Blog from './Blog';
 import Projects from './Projects';
 import About from './About';
-import Contact from './Contact';
 
 const HomePage = () => {
   return (
@@ -16,7 +15,6 @@ const HomePage = () => {
         <Blog />
         <Projects />
         <About />
-        <Contact />
       </main>
       
       <footer className="bg-gray-900 border-t border-gray-800 py-8 relative z-10">
@@ -35,9 +33,6 @@ const HomePage = () => {
                 <a href="#blog" className="block text-gray-400 hover:text-white transition-colors font-light">
                   Blog
                 </a>
-                <a href="#contact" className="block text-gray-400 hover:text-white transition-colors font-light">
-                  Contact
-                </a>
               </div>
             </div>
 
@@ -49,7 +44,7 @@ const HomePage = () => {
                   href="https://github.com/Lmx154" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="block text-gray-400 hover:text-white transition-colors font-light flex items-center space-x-2"
+                  className="text-gray-400 hover:text-white transition-colors font-light flex items-center space-x-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -60,7 +55,7 @@ const HomePage = () => {
                   href="https://linkedin.com/in/luis-martinez" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="block text-gray-400 hover:text-white transition-colors font-light flex items-center space-x-2"
+                  className="text-gray-400 hover:text-white transition-colors font-light flex items-center space-x-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

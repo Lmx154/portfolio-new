@@ -55,12 +55,6 @@ const Header = () => {
             >
               ABOUT
             </button>
-            <button
-              onClick={() => scrollToSection('contact')}
-              className="text-gray-300 hover:text-white transition-colors font-light"
-            >
-              CONTACT
-            </button>
           </nav>
 
           <div className="flex items-center space-x-4">
