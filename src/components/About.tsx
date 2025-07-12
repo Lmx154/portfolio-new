@@ -91,6 +91,33 @@ const About = () => {
                 <p className="text-gray-400 text-sm font-light">Aerospace Technology</p>
               </div>
             </div>
+            
+            {/* Resume Download Button */}
+            <div className="flex justify-center py-6">
+              <a
+                href="/resume.pdf"
+                download="Luis_Martinez_Resume.pdf"
+                className="group relative inline-flex items-center space-x-3 px-8 py-4 bg-gray-800 border border-gray-600 hover:border-gray-500 text-white font-light transition-all duration-300 hover:bg-gray-700"
+                style={{
+                  animation: 'subtle-pulse 3s ease-in-out infinite'
+                }}
+              >
+                <span>Resume</span>
+                <svg 
+                  className="w-5 h-5 transition-transform group-hover:translate-y-0.5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                  />
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
       </div>

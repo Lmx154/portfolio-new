@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Subtle pulsing animation for resume button */
+@keyframes subtle-pulse {
+  0%, 100% {
+    border-color: rgb(75, 85, 99); /* gray-600 */
+    box-shadow: 0 0 0 0 rgba(75, 85, 99, 0.3);
+  }
+  50% {
+    border-color: rgb(107, 114, 128); /* gray-500 */
+    box-shadow: 0 0 0 4px rgba(107, 114, 128, 0.1);
+  }
+}
