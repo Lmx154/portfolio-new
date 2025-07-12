@@ -4,6 +4,7 @@ import Hero from './Hero';
 import Blog from './Blog';
 import Projects from './Projects';
 import About from './About';
+import Gallery from './Gallery';
 
 const HomePage = () => {
   return (
@@ -15,6 +16,7 @@ const HomePage = () => {
         <Blog />
         <Projects />
         <About />
+        <Gallery />
       </main>
       
       <footer className="bg-gray-900 border-t border-gray-800 py-8 relative z-10">
@@ -26,6 +28,9 @@ const HomePage = () => {
               <div className="space-y-2">
                 <a href="#about" className="block text-gray-400 hover:text-white transition-colors font-light">
                   About
+                </a>
+                <a href="#gallery" className="block text-gray-400 hover:text-white transition-colors font-light">
+                  Gallery
                 </a>
                 <a href="#projects" className="block text-gray-400 hover:text-white transition-colors font-light">
                   Projects
@@ -52,7 +57,7 @@ const HomePage = () => {
                   <span>GitHub</span>
                 </a>
                 <a 
-                  href="https://linkedin.com/in/luis-martinez" 
+                  href="https://www.linkedin.com/in/luismtz-2b54f/" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors font-light flex items-center space-x-2"
@@ -61,6 +66,17 @@ const HomePage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
                   <span>LinkedIn</span>
+                </a>
+                <a 
+                  href="https://x.com/Lmx154" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors font-light flex items-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  <span>X (Twitter)</span>
                 </a>
               </div>
             </div>

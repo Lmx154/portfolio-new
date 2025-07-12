@@ -37,7 +37,7 @@ const ParticleBackground = () => {
               random: true,
               anim: {
                 enable: true,
-                speed: 0.5,
+                speed: 0.1,
                 opacity_min: 0.3,
                 sync: false
               }
@@ -47,7 +47,7 @@ const ParticleBackground = () => {
               random: true,
               anim: {
                 enable: true,
-                speed: 1,
+                speed: 0.2,
                 size_min: 0.5,
                 sync: false
               }
@@ -57,7 +57,7 @@ const ParticleBackground = () => {
             },
             move: {
               enable: true,
-              speed: 0.3,
+              speed: 0.05,
               direction: 'none',
               random: true,
               straight: false,
