@@ -1,9 +1,15 @@
 import { useParams, Link } from 'react-router-dom';
+import { useEffect } from 'react';
 import { blogPosts } from '../data/blogPosts';
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
   const post = blogPosts.find(p => p.id === id);
+
+  // Scroll to top when component mounts or when the blog post ID changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [id]);
 
   if (!post) {
     return (
