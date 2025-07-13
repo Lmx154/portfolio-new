@@ -6,9 +6,14 @@ export interface BlogPost {
   readTime: string;
   content: {
     sections: Array<{
-      type: 'text' | 'heading' | 'image';
+      type: 'text' | 'heading' | 'image' | 'video';
       content: string;
       alt?: string;
+      caption?: string;
+      autoplay?: boolean;
+      loop?: boolean;
+      muted?: boolean;
+      controls?: boolean;
     }>;
   };
   tags: string[];
@@ -53,6 +58,15 @@ export const blogPosts: BlogPost[] = [
           type: 'image',
           content: '/brunitobay.jpg',
           alt: 'Brunito avionics bay fully assembled'
+        },
+        {
+          type: 'video',
+          content: '/videos/brunitosquirt.mp4',
+          caption: 'Final systems check and testing of the assembled Brunito avionics bay before launch',
+          controls: true,
+          muted: true,
+          autoplay: false,
+          loop: false
         },
         {
           type: 'text',

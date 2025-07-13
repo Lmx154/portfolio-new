@@ -1,6 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import { blogPosts } from '../data/blogPosts';
+import Video from './Video';
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
@@ -88,6 +89,20 @@ const BlogPost = () => {
                         {section.alt}
                       </p>
                     )}
+                  </div>
+                );
+              case 'video':
+                return (
+                  <div key={index} className="my-12">
+                    <Video
+                      src={section.content}
+                      alt={section.alt}
+                      caption={section.caption}
+                      autoplay={section.autoplay}
+                      loop={section.loop}
+                      muted={section.muted}
+                      controls={section.controls}
+                    />
                   </div>
                 );
               default:
