@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import { blogPosts } from '../data/blogPosts';
 import Video from './Video';
+import ClickableImage from './ClickableImage';
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
@@ -79,7 +80,7 @@ const BlogPost = () => {
               case 'image':
                 return (
                   <div key={index} className="my-12">
-                    <img 
+                    <ClickableImage 
                       src={section.content} 
                       alt={section.alt || ''} 
                       className="w-full h-auto border border-gray-700"

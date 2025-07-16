@@ -1,3 +1,5 @@
+import ClickableImage from './ClickableImage';
+
 const About = () => {
   const traits = [
     {
@@ -55,7 +57,7 @@ const About = () => {
           {/* Profile Image */}
           <div className="flex justify-center">
             <div className="w-80 h-80 bg-gray-800 border-4 border-gray-700 overflow-hidden">
-              <img 
+              <ClickableImage 
                 src="/profile.jpg" 
                 alt="Luis Martinez" 
                 className="w-full h-full object-cover"

@@ -1,3 +1,5 @@
+import ClickableImage from './ClickableImage';
+
 const Projects = () => {
   const projects = [
     {
@@ -76,7 +78,7 @@ const Projects = () => {
           {projects.map((project, index) => (
             <div key={index} className="bg-gray-800/50 border border-gray-700 hover:border-gray-600 transition-colors group cursor-pointer">
               <div className="aspect-video bg-gray-900 overflow-hidden">
-                <img 
+                <ClickableImage 
                   src={project.image} 
                   alt={project.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

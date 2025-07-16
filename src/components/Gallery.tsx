@@ -1,3 +1,5 @@
+import ClickableImage from './ClickableImage';
+
 const Gallery = () => {
   const galleryImages = [
     {
@@ -56,7 +58,7 @@ const Gallery = () => {
             <div key={image.id} className="group cursor-pointer">
               <div className="bg-gray-800/50 border border-gray-700 hover:border-gray-600 transition-all duration-300 overflow-hidden">
                 <div className="aspect-square bg-gray-900 overflow-hidden">
-                  <img 
+                  <ClickableImage 
                     src={image.src} 
                     alt={image.alt}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
