@@ -74,6 +74,11 @@ const HERO_POINT_BUDGET = 120000; // createGalaxy halves this internally on mobi
 // stacked with the rest of this loop's work; the build simply takes a few
 // more frames on a slower device instead of ever blocking one.
 const HERO_BUILD_BUDGET_MS = 6;
+// Depth at which a reduced-motion visitor's single static hero is placed —
+// squarely inside the [FAR+FADE_IN, NEAR-FADE_OUT] band where `fadeAt`
+// evaluates to 1, so it renders at full opacity instead of at FAR (where it
+// would be invisible) or drifting toward NEAR (there is no drift here).
+const HERO_STATIC_Z = (FAR + NEAR) / 2;
 
 const SPACE_VIGNETTE = 'radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0) 65%)';
 
@@ -331,6 +336,29 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     };
 
     if (prefersReducedMotion) {
+      // spawnHero() is only ever called from inside renderFrame, which never
+      // runs under reduced motion — so without this, the headline feature of
+      // this branch (a real 3D galaxy) would never appear for that audience,
+      // where before it was baked during setup and present in every static
+      // render. Build one hero to completion (no per-frame time budget to
+      // respect, since there is no render loop here) and place it well inside
+      // the fully-faded-in band before the single static frame below.
+      const instance = rollGalaxyInstance(ctx.rng);
+      heroX = (ctx.rng() - 0.5) * Math.abs(FAR) * 0.5;
+      heroY = (ctx.rng() - 0.5) * Math.abs(FAR) * 0.35;
+      heroZ = HERO_STATIC_Z;
+      const build = createGalaxyIncremental(ctx, {
+        instance,
+        worldSize: HERO_SIZE * instance.scale,
+        pointBudget: HERO_POINT_BUDGET,
+      });
+      let built: GalaxyHandle | null = null;
+      while (!built) built = build.step(Number.POSITIVE_INFINITY);
+      hero = built;
+      hero.group.position.set(heroX, heroY, heroZ);
+      hero.setOpacity(fadeAt(heroZ));
+      scene.add(hero.group);
+
       camera.lookAt(0, 0, -600);
       renderer.render(scene, camera);
     } else {

@@ -39,10 +39,11 @@ import type { SpaceCtx, SpaceObject } from './types';
  * `position:relative` wrapper, so the two line up exactly.
  */
 
-/** True when the page was loaded with `?spacelab` in the query string. */
-export function isSpacelab(): boolean {
-  return new URLSearchParams(window.location.search).has('spacelab');
-}
+// `isSpacelab` moved to its own module (`./isSpacelab`) so `App.tsx` can call
+// it on every render without eagerly importing `three` through this file —
+// re-exported here so any other existing import of it from `./spacelab`
+// keeps working.
+export { isSpacelab } from './isSpacelab';
 
 // ---- Layout constants ------------------------------------------------------
 // All sizes are fixed CSS px, independent of window size or devicePixelRatio,

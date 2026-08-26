@@ -49,6 +49,23 @@ function isNearHalf(y: number, z: number, inclination: number): boolean {
 }
 
 /**
+ * The stellar disk's sech^2 scale height, floored well above zero.
+ *
+ * `heightRatio: 0` (the `E` preset — ellipticals have no disk component in
+ * Hubble's scheme) previously produced `z0 = 0` verbatim, and
+ * `sampleSech2Height(rng, 0)` returns EXACTLY `0` for every draw: a
+ * mathematically flat, zero-thickness sheet. That's fine as long as nothing
+ * actually asks for points on it, but a jittered `bulgeFraction` (see
+ * `rollGalaxyInstance`) can still leave an E instance with a non-zero disk
+ * share, so the height itself must never be allowed to hit zero. The floor is
+ * small enough (1% of the scale length) that every preset with a real
+ * `heightRatio` looks unchanged.
+ */
+function diskScaleHeight(scaleLength: number, heightRatio: number): number {
+  return Math.max(scaleLength * heightRatio, scaleLength * 0.01);
+}
+
+/**
  * Disk stars: exponential in radius, sech^2 in height, with azimuth biased onto
  * logarithmic spiral arms by rejection sampling.
  */
@@ -63,7 +80,7 @@ export function buildDiskPoints(
   const sizes = new Float32Array(count);
   const nearHalf = new Uint8Array(count);
 
-  const z0 = scaleLength * inst.preset.heightRatio;
+  const z0 = diskScaleHeight(scaleLength, inst.preset.heightRatio);
   const armCount = inst.arms;
   const armAmp = armCount > 0 ? 0.85 : 0;
   const maxRadius = scaleLength * 5;
@@ -185,6 +202,14 @@ const EMPTY_GEOMETRY: GalaxyGeometry = {
  * piles up on the arm. Raising the arm response to that power is what makes
  * these cluster far more tightly than the disk stars do — beads on a string
  * rather than a smooth haze.
+ *
+ * Irregulars (`arms: [0]`) have no defined pitch angle to bias against — but
+ * `Irr`'s `hiiAbundance` is 1.00, the highest of any class, so they must still
+ * get knots: real irregulars are chaotic fields of star formation with no
+ * organizing spiral structure. Below, `arms > 0` gates ALL of the arm-biased
+ * rejection sampling (never call `spiralArmAngle` with `pitchRad = 0`); when
+ * it's false the knots simply scatter uniformly in azimuth across the same
+ * star-forming annulus instead.
  */
 export function buildHiiPoints(
   rng: () => number,
@@ -192,7 +217,7 @@ export function buildHiiPoints(
   count: number,
   scaleLength: number,
 ): GalaxyGeometry {
-  if (inst.preset.hiiAbundance <= 0 || inst.arms <= 0) return EMPTY_GEOMETRY;
+  if (inst.preset.hiiAbundance <= 0) return EMPTY_GEOMETRY;
 
   const n = Math.round(count * inst.preset.hiiAbundance);
   if (n <= 0) return EMPTY_GEOMETRY;
@@ -202,27 +227,30 @@ export function buildHiiPoints(
   const sizes = new Float32Array(n);
   const nearHalf = new Uint8Array(n);
 
-  const z0 = scaleLength * inst.preset.heightRatio * 0.6;
+  const z0 = diskScaleHeight(scaleLength, inst.preset.heightRatio) * 0.6;
   const maxRadius = scaleLength * 5;
   const KS_INDEX = 1.4;
+  const armCount = inst.arms;
 
   for (let i = 0; i < n; i++) {
     // Star formation is suppressed in the very centre and dies off outward.
     let radius = scaleLength * (0.6 + rng() * 3.4);
     if (radius > maxRadius) radius = maxRadius;
 
-    const armTheta = spiralArmAngle(radius, scaleLength, inst.pitchRad);
     let theta = rng() * Math.PI * 2;
-    for (let tries = 0; tries < 16; tries++) {
-      const candidate = rng() * Math.PI * 2;
-      const phase = inst.arms * (candidate - armTheta);
-      const armResponse = (1 + Math.cos(phase)) / 2;
-      if (rng() < Math.pow(armResponse, KS_INDEX)) {
-        theta = candidate;
-        break;
+    if (armCount > 0) {
+      const armTheta = spiralArmAngle(radius, scaleLength, inst.pitchRad);
+      for (let tries = 0; tries < 16; tries++) {
+        const candidate = rng() * Math.PI * 2;
+        const phase = armCount * (candidate - armTheta);
+        const armResponse = (1 + Math.cos(phase)) / 2;
+        if (rng() < Math.pow(armResponse, KS_INDEX)) {
+          theta = candidate;
+          break;
+        }
       }
+      theta += (rng() - 0.5) * 0.06 * Math.PI;
     }
-    theta += (rng() - 0.5) * 0.06 * Math.PI;
 
     const x = radius * Math.cos(theta);
     const y = radius * Math.sin(theta);
@@ -266,7 +294,7 @@ export function buildBarPoints(
 
   const halfLength = scaleLength * 1.6;
   const halfWidth = halfLength * 0.22;
-  const z0 = scaleLength * inst.preset.heightRatio;
+  const z0 = diskScaleHeight(scaleLength, inst.preset.heightRatio);
 
   for (let i = 0; i < count; i++) {
     // Gaussian along the bar, tighter Gaussian across it.
@@ -314,10 +342,15 @@ export function buildDustPoints(
   const positions = new Float32Array(count * 3);
   const colors = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
+  // Left zeroed (never computed) — `GalaxyGeometry` carries a `nearHalf` field
+  // uniformly across all five components so every builder returns the same
+  // shape, but `assembleGalaxy` draws the dust pass as a single unsplit layer
+  // (see its doc comment), so nothing ever reads this array for dust. Computing
+  // `isNearHalf` per point here would just be wasted work.
   const nearHalf = new Uint8Array(count);
 
   // Half the stellar scale height — dust settles further than stars do.
-  const z0 = scaleLength * inst.preset.heightRatio * 0.5;
+  const z0 = diskScaleHeight(scaleLength, inst.preset.heightRatio) * 0.5;
   // The dust disk is slightly more extended than the stellar disk.
   const dustScale = scaleLength * 1.15;
   const maxRadius = scaleLength * 5;
@@ -350,7 +383,7 @@ export function buildDustPoints(
     positions[i * 3] = x;
     positions[i * 3 + 1] = y;
     positions[i * 3 + 2] = z;
-    nearHalf[i] = isNearHalf(y, z, inst.inclination) ? 1 : 0;
+    // No nearHalf write here — see the allocation comment above.
 
     // Extinction strength, reddened: dust removes blue light first.
     const strength = inst.preset.dustOpacity * (0.5 + rng() * 0.5);
@@ -432,39 +465,6 @@ const DUST_TIER = 1; // multiplying — darkens everything in FAR_TIER
 const NEAR_TIER = 2; // additive: near disk, near bulge, near HII, near bar
 
 /**
- * Assemble the five geometry builders into one renderable galaxy.
- *
- * Two things make the draw order correct:
- *
- * 1. Every star-emitting component (disk, bulge, HII, bar) splits into a far
- *    half and a near half; the dust — which darkens whatever is already in the
- *    framebuffer — is drawn as a single unsplit pass in between. Additive
- *    blending commutes, so ordering *within* a half never matters.
- * 2. Inclination and position angle are applied as TWO nested groups, not two
- *    rotations on one group. `isNearHalf()` above bakes in the assumption that
- *    a point's world z is exactly `y*sin(i) + z*cos(i)` — true only for a bare
- *    `makeRotationX(i)`. Three.js composes a single object's Euler as
- *    `Rx * Ry * Rz`, which applies the z-rotation (position angle) to the
- *    local point *before* the x-rotation and would fold position angle into
- *    that formula, silently invalidating every precomputed `nearHalf` flag for
- *    almost every instance (position angle is `rng() * 2*PI`, essentially
- *    never 0). Nesting an inner group (pure `rotation.x = inclination`,
- *    holding the points) inside an outer group (pure `rotation.z =
- *    positionAngle`) instead composes as `Rz * (Rx * v)`: the inner transform
- *    alone determines world z exactly as `isNearHalf` assumes, and the outer
- *    z-rotation — being a rotation about the axis it doesn't touch — leaves
- *    that z untouched while still spinning the galaxy's on-sky orientation.
- */
-/**
- * The handle `createGalaxy`/`createGalaxyIncremental` return. Extends the
- * shared `SpaceObject` contract with one galaxy-only hook: `advance` drives
- * the star material's `uTime` uniform (per-point twinkle), which the nebula
- * and field starfields already advance from their own `setWarp`/`advance`
- * calls but which this module never wired up until now. This is deliberately
- * NOT folded into `SpaceObject` itself — the nebula/field/meteor handles have
- * no equivalent uniform to drive and shouldn't be forced to grow a no-op stub.
- */
-/**
  * The handle `createGalaxy`/`createGalaxyIncremental` return. Extends the
  * shared `SpaceObject` contract with two galaxy-only hooks: `advance` drives
  * the star material's `uTime` uniform (per-point twinkle), and `setWarp`
@@ -484,6 +484,36 @@ export type GalaxyHandle = SpaceObject & {
  * builds the same five bags across many time-boxed steps instead of one
  * synchronous call — can share every bit of draw-order/material/disposal
  * logic below instead of duplicating it.
+ *
+ * Three things make the draw order correct:
+ *
+ * 1. Every star-emitting component (disk, bulge, HII, bar) splits into a far
+ *    half and a near half; the dust — which darkens whatever is already in the
+ *    framebuffer — is drawn as a single unsplit pass in between. Additive
+ *    blending commutes, so ordering *within* a half never matters.
+ * 2. Inclination and position angle are applied as TWO nested groups, not two
+ *    rotations on one group. `isNearHalf()` above bakes in the assumption that
+ *    a point's world z is exactly `y*sin(i) + z*cos(i)` — true only for a bare
+ *    `makeRotationX(i)`. Three.js composes a single object's Euler as
+ *    `Rx * Ry * Rz`, which applies the z-rotation (position angle) to the
+ *    local point *before* the x-rotation and would fold position angle into
+ *    that formula, silently invalidating every precomputed `nearHalf` flag for
+ *    almost every instance (position angle is `rng() * 2*PI`, essentially
+ *    never 0). Nesting an inner group (pure `rotation.x = inclination`,
+ *    holding the points) inside an outer group (pure `rotation.z =
+ *    positionAngle`) instead composes as `Rz * (Rx * v)`: the inner transform
+ *    alone determines world z exactly as `isNearHalf` assumes, and the outer
+ *    z-rotation — being a rotation about the axis it doesn't touch — leaves
+ *    that z untouched while still spinning the galaxy's on-sky orientation.
+ * 3. Both nested groups sit at their own negative `Object3D.renderOrder` tier,
+ *    below every other transparent object in the scene (field stars, nebula,
+ *    meteors all default to 0). Three's `WebGLRenderer.projectObject` sorts
+ *    transparent objects by `groupOrder` before `renderOrder`/z, and resolves
+ *    `groupOrder` from the nearest ancestor `Group`'s OWN `renderOrder`,
+ *    re-resolving it at every `Group` it descends into — so without this, the
+ *    dust pass's `dst * (1 - srcColor)` blend would draw after (and multiply
+ *    down) scene content that is physically in front of the galaxy, not just
+ *    the galaxy's own far half. See the `outer`/`inner` assignment below.
  */
 function assembleGalaxy(
   ctx: SpaceCtx,
@@ -556,6 +586,13 @@ function assembleGalaxy(
   const outer = new THREE.Group();
   outer.add(inner);
 
+  // Point 3 of the doc comment above: sit below the rest of the scene so the
+  // dust pass never darkens content that isn't part of this galaxy. Set on
+  // BOTH groups — `projectObject` re-resolves `groupOrder` from `object.
+  // renderOrder` at every `Group` it descends into, so setting it on `outer`
+  // alone would be silently undone the instant traversal reaches `inner`.
+  outer.renderOrder = inner.renderOrder = -2;
+
   const geometries: THREE.BufferGeometry[] = [];
 
   const addHalf = (bag: PointBag, tier: number) => {
@@ -572,8 +609,8 @@ function assembleGalaxy(
   addHalf(barHalves.far, FAR_TIER);
 
   // Dust is drawn as a single unsplit pass between the two star tiers rather
-  // than split into its own near/far halves — see the createGalaxy doc
-  // comment.
+  // than split into its own near/far halves — see the assembleGalaxy doc
+  // comment above.
   // Unlike the split components (which allocate fresh arrays in
   // splitByNearHalf), the dust pass is unsplit, so it can wrap dustGeo's
   // arrays directly — nothing here mutates them, and a zero-count dust
@@ -632,21 +669,35 @@ function assembleGalaxy(
 }
 
 /**
- * Roll the fixed per-component point allocation for a `pointBudget`. Only
- * needs `isMobile`, not the rest of `SpaceCtx` — kept narrow so the ordered
- * component list below (and its tests) never need a `THREE.WebGLRenderer`.
+ * Roll the per-component point allocation for a `pointBudget`. Only needs
+ * `isMobile` and `bulgeFraction`, not the rest of `SpaceCtx`/`GalaxyInstance`
+ * — kept narrow so the ordered component list below (and its tests) never
+ * need a `THREE.WebGLRenderer`.
+ *
+ * Dust/HII/bar keep fixed shares of the budget; disk and bulge split what's
+ * left (83%) according to `bulgeFraction` — the instance's jittered B/T
+ * (bulge-to-total light ratio). B/T is what actually separates the Hubble
+ * classes (see presets.ts): a hardcoded disk/bulge split here would give an
+ * elliptical (B/T ~1) the same bulge as a bulgeless Sc, which is exactly the
+ * bug this replaced (an elliptical rendered as a flat exponential disk with
+ * `z0 = 0` because it only ever got a fixed 58% disk / 25% bulge cut).
  */
-function galaxyBudget(isMobile: boolean, pointBudget: number) {
+function galaxyBudget(isMobile: boolean, pointBudget: number, bulgeFraction: number) {
   // Fixed allocation across components, halved on mobile. buildHiiPoints
   // further scales its own share by hiiAbundance internally, so the 4% share
   // handed to it is a budget, not the eventual point count — do not pre-scale.
   const budget = isMobile ? Math.floor(pointBudget / 2) : pointBudget;
+  const DUST_SHARE = 0.12;
+  const HII_SHARE = 0.04;
+  const BAR_SHARE = 0.01;
+  const STELLAR_SHARE = 1 - DUST_SHARE - HII_SHARE - BAR_SHARE; // 0.83
+  const bt = Math.min(1, Math.max(0, bulgeFraction));
   return {
-    diskCount: Math.round(budget * 0.58),
-    bulgeCount: Math.round(budget * 0.25),
-    dustCount: Math.round(budget * 0.12),
-    hiiCount: Math.round(budget * 0.04),
-    barCount: Math.round(budget * 0.01),
+    diskCount: Math.round(budget * STELLAR_SHARE * (1 - bt)),
+    bulgeCount: Math.round(budget * STELLAR_SHARE * bt),
+    dustCount: Math.round(budget * DUST_SHARE),
+    hiiCount: Math.round(budget * HII_SHARE),
+    barCount: Math.round(budget * BAR_SHARE),
   };
 }
 
@@ -682,7 +733,11 @@ export function galaxyComponentSpecs(
   pointBudget: number,
 ): ComponentSpec[] {
   const { rng } = ctxLike;
-  const { diskCount, bulgeCount, dustCount, hiiCount, barCount } = galaxyBudget(ctxLike.isMobile, pointBudget);
+  const { diskCount, bulgeCount, dustCount, hiiCount, barCount } = galaxyBudget(
+    ctxLike.isMobile,
+    pointBudget,
+    inst.bulgeFraction,
+  );
 
   // Disk exponential scale length as a fraction of the requested world size.
   // `worldSize` is authoritative for overall size — per-instance jitter (e.g.

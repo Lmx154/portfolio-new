@@ -11,6 +11,7 @@ import {
   galaxyComponentSpecs,
   _internal,
   type GalaxyGeometry,
+  type ComponentSpec,
 } from './galaxy';
 
 function instanceOf(cls: keyof typeof GALAXY_PRESETS, seed: number): GalaxyInstance {
@@ -53,6 +54,24 @@ describe('buildDiskPoints', () => {
     }
     const meanAbsZ = sumAbsZ / geo.count;
     expect(meanAbsZ).toBeLessThan(maxR * 0.1);
+  });
+
+  it('is never a mathematically flat (zero-thickness) plane, even when heightRatio is 0', () => {
+    // GALAXY_PRESETS.E has heightRatio: 0, so z0 = scaleLength * 0 = 0 without
+    // a floor — and sampleSech2Height(rng, 0) returns EXACTLY 0 for every
+    // draw, i.e. every point lands on z === 0. A jittered bulgeFraction can
+    // still hand an E instance a non-zero disk share (see galaxyBudget), so
+    // buildDiskPoints itself must never emit that degenerate plane regardless
+    // of what count it's asked to build.
+    const geo = buildDiskPoints(makeRng(41), instanceOf('E', 41), 5000, 10);
+    let allZero = true;
+    for (let i = 0; i < geo.count; i++) {
+      if (geo.positions[i * 3 + 2] !== 0) {
+        allZero = false;
+        break;
+      }
+    }
+    expect(allZero).toBe(false);
   });
 
   it('has a mean radius near the analytic 2h', () => {
@@ -266,6 +285,42 @@ describe('buildHiiPoints', () => {
       expect(Number.isFinite(geo.positions[i])).toBe(true);
     }
   });
+
+  describe('irregulars (arms === 0, hiiAbundance > 0)', () => {
+    // Irr has arms: [0] (no defined pitch angle) but hiiAbundance: 1.00, the
+    // highest of any class. The old `inst.arms <= 0` early return made every
+    // Irr galaxy render with zero HII knots — the opposite of "very high" star
+    // formation. Knots should still appear, just without an arm bias.
+    it('places knots instead of returning an empty set', () => {
+      const budget = 20000;
+      const geo = buildHiiPoints(makeRng(50), instanceOf('Irr', 50), budget, 10);
+      expect(geo.count).toBe(Math.round(budget * GALAXY_PRESETS.Irr.hiiAbundance));
+      expect(geo.count).toBeGreaterThan(0);
+    });
+
+    it('scatters uniformly in azimuth instead of clustering on nonexistent arms', () => {
+      const geo = buildHiiPoints(makeRng(51), instanceOf('Irr', 51), 40000, 10);
+      const bins = new Array(36).fill(0);
+      for (let i = 0; i < geo.count; i++) {
+        const x = geo.positions[i * 3];
+        const y = geo.positions[i * 3 + 1];
+        const r = Math.hypot(x, y);
+        if (r < 8 || r > 16) continue;
+        let t = Math.atan2(y, x);
+        if (t < 0) t += Math.PI * 2;
+        bins[Math.floor((t / (Math.PI * 2)) * 36) % 36]++;
+      }
+      // Same binning-noise threshold the disk's armless test (above) uses.
+      expect(Math.max(...bins) / Math.min(...bins)).toBeLessThan(1.35);
+    });
+
+    it('produces no NaN coordinates', () => {
+      const geo = buildHiiPoints(makeRng(52), instanceOf('Irr', 52), 5000, 10);
+      for (let i = 0; i < geo.positions.length; i++) {
+        expect(Number.isFinite(geo.positions[i])).toBe(true);
+      }
+    });
+  });
 });
 
 describe('buildBarPoints', () => {
@@ -422,5 +477,72 @@ describe('galaxyComponentSpecs (shared build order for createGalaxy / createGala
     const totalMobile = mobile.reduce((sum, s) => sum + s.count, 0);
     expect(totalMobile).toBeLessThan(totalDesktop);
     expect(totalMobile).toBeCloseTo(totalDesktop / 2, -1);
+  });
+});
+
+describe('galaxyComponentSpecs disk/bulge split (C2 fix: driven by bulgeFraction, not a hardcoded 58/25)', () => {
+  // Whole-branch review finding: galaxyBudget hardcoded disk 58% / bulge 25%
+  // for every class, so an elliptical (B/T = 1.00, all bulge) got a 58% disk
+  // it should never have had, and Sa/Sc/Irr — whose B/T actually spans
+  // 0.50/0.08/0.02 — all got an identical bulge. Disk and bulge must instead
+  // split the remaining budget (after dust 12% / HII 4% / bar 1%) according
+  // to the instance's bulgeFraction.
+  const countsFor = (cls: keyof typeof GALAXY_PRESETS): Record<ComponentSpec['key'], number> => {
+    const preset = GALAXY_PRESETS[cls];
+    const inst: GalaxyInstance = {
+      preset,
+      pitchRad: 0,
+      arms: preset.arms[0],
+      bulgeFraction: preset.bulgeFraction, // unjittered, for deterministic expected counts
+      inclination: 0,
+      positionAngle: 0,
+      scale: 1,
+    };
+    const specs = galaxyComponentSpecs({ rng: makeRng(1), isMobile: false }, inst, 900, 120000);
+    return Object.fromEntries(specs.map((s) => [s.key, s.count])) as Record<ComponentSpec['key'], number>;
+  };
+
+  // Exact counts at pointBudget=120000 (HERO_POINT_BUDGET), desktop. Pinned
+  // here as the source of truth for what each class actually renders now —
+  // see the final fix report for the same table.
+  it('gives an elliptical (B/T = 1.00) a zero disk share and ~83% of the budget as bulge', () => {
+    const counts = countsFor('E');
+    expect(counts.disk).toBe(0);
+    expect(counts.bulge).toBe(99600);
+  });
+
+  it('gives an irregular (B/T = 0.02) a small bulge share and ~81% of the budget as disk', () => {
+    const counts = countsFor('Irr');
+    expect(counts.disk).toBe(97608);
+    expect(counts.bulge).toBe(1992);
+    expect(counts.bulge).toBeLessThan(counts.disk * 0.05);
+  });
+
+  it('gives Sa (B/T = 0.50) and Sc (B/T = 0.08) very different bulges instead of an identical one', () => {
+    const sa = countsFor('Sa');
+    const sc = countsFor('Sc');
+    expect(sa.bulge).toBe(49800);
+    expect(sc.bulge).toBe(7968);
+    // Sa's B/T is 6.25x Sc's (0.50 / 0.08) — the point-count ratio should
+    // track that, not collapse to the old shared 25% value.
+    expect(sa.bulge / sc.bulge).toBeGreaterThan(5);
+    expect(sa.bulge / sc.bulge).toBeLessThan(7);
+  });
+
+  it('keeps dust/HII/bar shares fixed at 12%/4%/1% regardless of bulgeFraction', () => {
+    for (const cls of Object.keys(GALAXY_PRESETS) as (keyof typeof GALAXY_PRESETS)[]) {
+      const counts = countsFor(cls);
+      expect(counts.dust).toBe(14400);
+      expect(counts.hii).toBe(4800);
+      expect(counts.bar).toBe(1200);
+    }
+  });
+
+  it('always spends the whole budget across the five components', () => {
+    for (const cls of Object.keys(GALAXY_PRESETS) as (keyof typeof GALAXY_PRESETS)[]) {
+      const counts = countsFor(cls);
+      const total = counts.disk + counts.bulge + counts.dust + counts.hii + counts.bar;
+      expect(total).toBe(120000);
+    }
   });
 });
