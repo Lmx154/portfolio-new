@@ -475,11 +475,13 @@ export function createGalaxy(
   const hiiCount = Math.round(budget * 0.04);
   const barCount = Math.round(budget * 0.01);
 
-  // Disk exponential scale length as a fraction of the requested world size,
-  // jittered per-instance by `inst.scale`; the bulge's Hernquist radius is a
-  // smaller fraction of that, since real bulges are far more compact than the
-  // disk they sit inside.
-  const scaleLength = worldSize * 0.14 * inst.scale;
+  // Disk exponential scale length as a fraction of the requested world size.
+  // `worldSize` is authoritative for overall size — per-instance jitter (e.g.
+  // `inst.scale`) is the caller's job, folded into `worldSize` before it gets
+  // here, not reapplied inside this function. The bulge's Hernquist radius is
+  // a smaller fraction of that, since real bulges are far more compact than
+  // the disk they sit inside.
+  const scaleLength = worldSize * 0.14;
   const scaleRadius = scaleLength * 0.3;
 
   const diskGeo = buildDiskPoints(ctx.rng, inst, diskCount, scaleLength);
@@ -557,6 +559,11 @@ export function createGalaxy(
   // Dust is drawn as a single unsplit pass between the two star tiers rather
   // than split into its own near/far halves — see the createGalaxy doc
   // comment.
+  // Unlike the split components (which allocate fresh arrays in
+  // splitByNearHalf), the dust pass is unsplit, so it can wrap dustGeo's
+  // arrays directly — nothing here mutates them, and a zero-count dust
+  // geometry is the shared EMPTY_GEOMETRY singleton, which never reaches
+  // makePoints below.
   const dustPoints = makePoints(
     { positions: dustGeo.positions, colors: dustGeo.colors, sizes: dustGeo.sizes, count: dustGeo.count },
     dustMat,
