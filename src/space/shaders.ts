@@ -148,7 +148,7 @@ export const QUAD_FRAG = /* glsl */ `
   }
 `;
 
-// ---- Star shader (fades + min-size + twinkle, no sub-pixel glitter) ---------
+// ---- Star shader (fades + min-size, no sub-pixel glitter) -------------------
 export const STAR_VERT = /* glsl */ `
   attribute float aSize;
   attribute vec3 aColor;
@@ -162,7 +162,6 @@ export const STAR_VERT = /* glsl */ `
   uniform float uFadeIn;
   uniform float uFadeOut;
   uniform float uWarpFade;
-  uniform float uTime;
   uniform float uOpacity;
   void main() {
     vColor = aColor;
@@ -175,10 +174,11 @@ export const STAR_VERT = /* glsl */ `
     float wantCss = aSize * uSizeScale / max(-mv.z, 1.0);
     float small = clamp(wantCss / uMinPx, 0.0, 1.0);
     float sizeCss = clamp(max(wantCss, uMinPx), 0.0, 18.0);
-    // Subtle atmospheric-style twinkle, per-star phase + rate.
-    float ph = fract(aSize * 43.7585 + position.x * 0.0113 + position.y * 0.0177) * 6.2831;
-    float tw = 0.82 + 0.18 * sin(uTime * (1.0 + fract(aSize * 17.31) * 3.0) + ph);
-    vAlpha = fade * (0.15 + 0.85 * small) * uWarpFade * tw;
+    // No twinkle: scintillation is refraction through Earth's atmosphere, and
+    // this camera is in space. Animating per-star brightness here made ~100k
+    // galaxy points and the field shimmer continuously at cruise, which reads
+    // as noise rather than life.
+    vAlpha = fade * (0.15 + 0.85 * small) * uWarpFade;
     vAlpha *= uOpacity;
     gl_PointSize = sizeCss * uPixelRatio;
   }
@@ -280,7 +280,6 @@ export function makeStarMaterial(opts: {
       uFadeIn: { value: opts.fadeIn },
       uFadeOut: { value: opts.fadeOut },
       uWarpFade: { value: 1 },
-      uTime: { value: 0 },
       uOpacity: { value: 1 },
     },
     vertexShader: STAR_VERT,

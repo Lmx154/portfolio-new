@@ -20,8 +20,8 @@ import type { SpaceCtx, SpaceObject } from './types';
  *
  * The whole grid renders ONCE. There is no drift, no warp, no cruise, and no
  * rAF loop — cells are meant to sit still so they can be compared side by
- * side, and `uTime` is never advanced (expected: Task 13 adds the per-frame
- * hook that drives twinkle in the real scene).
+ * side. Stars do not twinkle here or in production — scintillation is an
+ * atmospheric effect and this camera is in space.
  *
  * Mounting: `mountSpacelab` expects to own a plain, normal-flow container
  * (see `App.tsx`'s `SpacelabPage`) that is free to grow to the grid's full

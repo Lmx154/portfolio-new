@@ -288,8 +288,8 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       field.advance(step);
 
       // Drive the warp streaks + dim the round stars while warping.
-      field.setWarp(warpEased, STREAK_MAX, clock.elapsedTime, warp);
-      nebulae.setWarp(warpEased, clock.elapsedTime);
+      field.setWarp(warpEased, STREAK_MAX, warp);
+      nebulae.setWarp(warpEased);
       if (hero) hero.setWarp(warpEased);
 
       nebulae.advance(step, fadeAt);
@@ -301,7 +301,6 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
         heroZ += step * GALAXY_SPEED;
         hero.group.position.z = heroZ;
         hero.setOpacity(fadeAt(heroZ));
-        hero.advance(clock.elapsedTime);
         if (heroZ - HERO_SIZE * 0.5 > NEAR) {
           scene.remove(hero.group);
           hero.dispose();

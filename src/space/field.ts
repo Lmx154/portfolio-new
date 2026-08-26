@@ -22,7 +22,7 @@ export type FieldStars = {
   /** Drive the warp envelope: star dim/twinkle time and streak stretch/visibility.
    *  `warp` is the raw (pre-easing) warp value; visibility gates on it rather
    *  than on `warpEased` to match the original un-extracted behaviour exactly. */
-  setWarp: (warpEased: number, streakMax: number, elapsedTime: number, warp: number) => void;
+  setWarp: (warpEased: number, streakMax: number, warp: number) => void;
   /** Rescale the star material for the current viewport (call on resize). */
   onResize: (sizeScale: number) => void;
   dispose: () => void;
@@ -143,9 +143,8 @@ export function createFieldStars(
     fieldPosAttr.needsUpdate = true;
   };
 
-  const setWarp = (warpEased: number, streakMax: number, elapsedTime: number, warp: number) => {
+  const setWarp = (warpEased: number, streakMax: number, warp: number) => {
     fieldMat.uniforms.uWarpFade.value = 1 - 0.82 * warpEased;
-    fieldMat.uniforms.uTime.value = elapsedTime;
     streakMat.uniforms.uWarp.value = warpEased;
     streakMat.uniforms.uStreakLen.value = warpEased * streakMax;
     if (warp > 0.001) {

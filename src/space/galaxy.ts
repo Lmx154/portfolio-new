@@ -466,15 +466,13 @@ const NEAR_TIER = 2; // additive: near disk, near bulge, near HII, near bar
 
 /**
  * The handle `createGalaxy`/`createGalaxyIncremental` return. Extends the
- * shared `SpaceObject` contract with two galaxy-only hooks: `advance` drives
- * the star material's `uTime` uniform (per-point twinkle), and `setWarp`
+ * shared `SpaceObject` contract with one galaxy-only hook: `setWarp`
  * dims the galaxy the same way `field.ts`/`nebula.ts` dim their own star
  * materials during a warp jump. Neither is folded into `SpaceObject` itself —
  * the nebula/field/meteor handles have no equivalent uniform to drive and
  * shouldn't be forced to grow a no-op stub.
  */
 export type GalaxyHandle = SpaceObject & {
-  advance: (elapsedTime: number) => void;
   setWarp: (warpEased: number) => void;
 };
 
@@ -560,7 +558,6 @@ function assembleGalaxy(
       uFadeIn: { value: fadeIn },
       uFadeOut: { value: fadeOut },
       uWarpFade: { value: 1 },
-      uTime: { value: 0 },
       uOpacity: { value: 1 },
     },
     vertexShader: STAR_VERT,
@@ -642,14 +639,6 @@ function assembleGalaxy(
     dustMat.uniforms.uOpacity.value = o;
   };
 
-  // Drives the same per-point twinkle the field starfield and nebula clouds
-  // already animate via their own `uTime` uniforms (see STAR_VERT). Without
-  // this the galaxy's twinkle sits frozen at t=0 for its entire time on screen.
-  const advance = (elapsedTime: number) => {
-    starMat.uniforms.uTime.value = elapsedTime;
-    dustMat.uniforms.uTime.value = elapsedTime;
-  };
-
   // Same warp-dim curve field.ts/nebula.ts already apply to their own star
   // materials (`1 - 0.82 * warpEased`) — without this the hero galaxy sat at
   // full brightness while everything else dimmed and streaked past.
@@ -665,7 +654,7 @@ function assembleGalaxy(
     dustMat.dispose();
   };
 
-  return { group: outer, setOpacity, dispose, advance, setWarp };
+  return { group: outer, setOpacity, dispose, setWarp };
 }
 
 /**
