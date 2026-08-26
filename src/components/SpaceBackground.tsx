@@ -285,6 +285,7 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       // Drive the warp streaks + dim the round stars while warping.
       field.setWarp(warpEased, STREAK_MAX, clock.elapsedTime, warp);
       nebulae.setWarp(warpEased, clock.elapsedTime);
+      if (hero) hero.setWarp(warpEased);
 
       nebulae.advance(step, fadeAt);
 

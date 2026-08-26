@@ -464,8 +464,18 @@ const NEAR_TIER = 2; // additive: near disk, near bulge, near HII, near bar
  * NOT folded into `SpaceObject` itself — the nebula/field/meteor handles have
  * no equivalent uniform to drive and shouldn't be forced to grow a no-op stub.
  */
+/**
+ * The handle `createGalaxy`/`createGalaxyIncremental` return. Extends the
+ * shared `SpaceObject` contract with two galaxy-only hooks: `advance` drives
+ * the star material's `uTime` uniform (per-point twinkle), and `setWarp`
+ * dims the galaxy the same way `field.ts`/`nebula.ts` dim their own star
+ * materials during a warp jump. Neither is folded into `SpaceObject` itself —
+ * the nebula/field/meteor handles have no equivalent uniform to drive and
+ * shouldn't be forced to grow a no-op stub.
+ */
 export type GalaxyHandle = SpaceObject & {
   advance: (elapsedTime: number) => void;
+  setWarp: (warpEased: number) => void;
 };
 
 /**
@@ -603,32 +613,103 @@ function assembleGalaxy(
     dustMat.uniforms.uTime.value = elapsedTime;
   };
 
+  // Same warp-dim curve field.ts/nebula.ts already apply to their own star
+  // materials (`1 - 0.82 * warpEased`) — without this the hero galaxy sat at
+  // full brightness while everything else dimmed and streaked past.
+  const setWarp = (warpEased: number) => {
+    const warpFade = 1 - 0.82 * warpEased;
+    starMat.uniforms.uWarpFade.value = warpFade;
+    dustMat.uniforms.uWarpFade.value = warpFade;
+  };
+
   const dispose = () => {
     for (const g of geometries) g.dispose();
     starMat.dispose();
     dustMat.dispose();
   };
 
-  return { group: outer, setOpacity, dispose, advance };
+  return { group: outer, setOpacity, dispose, advance, setWarp };
 }
 
 /**
- * Roll the fixed per-component point allocation for a `pointBudget`. Shared by
- * `createGalaxy` and `createGalaxyIncremental` so the two stay in lockstep —
- * chunking how the points get built must not change how many of each kind get
- * built.
+ * Roll the fixed per-component point allocation for a `pointBudget`. Only
+ * needs `isMobile`, not the rest of `SpaceCtx` — kept narrow so the ordered
+ * component list below (and its tests) never need a `THREE.WebGLRenderer`.
  */
-function galaxyBudget(ctx: SpaceCtx, pointBudget: number) {
+function galaxyBudget(isMobile: boolean, pointBudget: number) {
   // Fixed allocation across components, halved on mobile. buildHiiPoints
   // further scales its own share by hiiAbundance internally, so the 4% share
   // handed to it is a budget, not the eventual point count — do not pre-scale.
-  const budget = ctx.isMobile ? Math.floor(pointBudget / 2) : pointBudget;
+  const budget = isMobile ? Math.floor(pointBudget / 2) : pointBudget;
   return {
     diskCount: Math.round(budget * 0.58),
     bulgeCount: Math.round(budget * 0.25),
     dustCount: Math.round(budget * 0.12),
     hiiCount: Math.round(budget * 0.04),
     barCount: Math.round(budget * 0.01),
+  };
+}
+
+/** One of the five point-generating components: how many points it wants and
+ * how to build any given slice of that count. */
+export type ComponentSpec = {
+  key: 'disk' | 'bulge' | 'hii' | 'bar' | 'dust';
+  count: number;
+  build: (n: number) => GalaxyGeometry;
+};
+
+/**
+ * The five components, in the EXACT order their outputs are drawn (see the
+ * `assembleGalaxy` doc comment for why draw order matters) and — just as
+ * importantly — the exact order they consume `ctx.rng()`. `createGalaxy` and
+ * `createGalaxyIncremental` both derive their component list from this one
+ * function instead of each hand-rolling their own sequence of build calls, so
+ * the two can no longer silently diverge in what order they draw from the rng
+ * stream (a real bug caught in Task 13 review: the incremental path had
+ * settled into disk/bulge/dust/hii/bar while `createGalaxy` used
+ * disk/bulge/hii/bar/dust — same point counts, different points, and a
+ * `?spacelab` preview that no longer matched the live site for a given seed).
+ *
+ * Deliberately typed to need only `rng`/`isMobile`, not a full `SpaceCtx` —
+ * building geometry never touches the renderer, and keeping this signature
+ * narrow is what lets it be unit-tested without a `THREE.WebGLRenderer` (this
+ * project's tests run in a DOM-less node environment; see vitest.config.ts).
+ */
+export function galaxyComponentSpecs(
+  ctxLike: { rng: () => number; isMobile: boolean },
+  inst: GalaxyInstance,
+  worldSize: number,
+  pointBudget: number,
+): ComponentSpec[] {
+  const { rng } = ctxLike;
+  const { diskCount, bulgeCount, dustCount, hiiCount, barCount } = galaxyBudget(ctxLike.isMobile, pointBudget);
+
+  // Disk exponential scale length as a fraction of the requested world size.
+  // `worldSize` is authoritative for overall size — per-instance jitter (e.g.
+  // `inst.scale`) is the caller's job, folded into `worldSize` before it gets
+  // here, not reapplied inside this function. The bulge's Hernquist radius is
+  // a smaller fraction of that, since real bulges are far more compact than
+  // the disk they sit inside.
+  const scaleLength = worldSize * 0.14;
+  const scaleRadius = scaleLength * 0.3;
+
+  return [
+    { key: 'disk', count: diskCount, build: (n) => buildDiskPoints(rng, inst, n, scaleLength) },
+    { key: 'bulge', count: bulgeCount, build: (n) => buildBulgePoints(rng, inst, n, scaleRadius) },
+    { key: 'hii', count: hiiCount, build: (n) => buildHiiPoints(rng, inst, n, scaleLength) },
+    { key: 'bar', count: barCount, build: (n) => buildBarPoints(rng, inst, n, scaleLength) },
+    { key: 'dust', count: dustCount, build: (n) => buildDustPoints(rng, inst, n, scaleLength) },
+  ];
+}
+
+function geosByKey(specs: { key: ComponentSpec['key']; geo: GalaxyGeometry }[]) {
+  const byKey = Object.fromEntries(specs.map((s) => [s.key, s.geo])) as Record<ComponentSpec['key'], GalaxyGeometry>;
+  return {
+    diskGeo: byKey.disk,
+    bulgeGeo: byKey.bulge,
+    hiiGeo: byKey.hii,
+    barGeo: byKey.bar,
+    dustGeo: byKey.dust,
   };
 }
 
@@ -641,24 +722,9 @@ export function createGalaxy(
   },
 ): GalaxyHandle {
   const { instance: inst, worldSize } = opts;
-  const { diskCount, bulgeCount, dustCount, hiiCount, barCount } = galaxyBudget(ctx, opts.pointBudget);
-
-  // Disk exponential scale length as a fraction of the requested world size.
-  // `worldSize` is authoritative for overall size — per-instance jitter (e.g.
-  // `inst.scale`) is the caller's job, folded into `worldSize` before it gets
-  // here, not reapplied inside this function. The bulge's Hernquist radius is
-  // a smaller fraction of that, since real bulges are far more compact than
-  // the disk they sit inside.
-  const scaleLength = worldSize * 0.14;
-  const scaleRadius = scaleLength * 0.3;
-
-  const diskGeo = buildDiskPoints(ctx.rng, inst, diskCount, scaleLength);
-  const bulgeGeo = buildBulgePoints(ctx.rng, inst, bulgeCount, scaleRadius);
-  const hiiGeo = buildHiiPoints(ctx.rng, inst, hiiCount, scaleLength);
-  const barGeo = buildBarPoints(ctx.rng, inst, barCount, scaleLength);
-  const dustGeo = buildDustPoints(ctx.rng, inst, dustCount, scaleLength);
-
-  return assembleGalaxy(ctx, inst, worldSize, { diskGeo, bulgeGeo, hiiGeo, barGeo, dustGeo });
+  const specs = galaxyComponentSpecs(ctx, inst, worldSize, opts.pointBudget);
+  const geos = geosByKey(specs.map((spec) => ({ key: spec.key, geo: spec.build(spec.count) })));
+  return assembleGalaxy(ctx, inst, worldSize, geos);
 }
 
 /** Merge several same-shaped `GalaxyGeometry` chunks, built independently, into one. */
@@ -699,15 +765,30 @@ function makeBatchSizes(total: number): number[] {
 }
 
 /**
- * Same output as `createGalaxy`, built across many time-boxed `step()` calls
+ * Build one component's full geometry across `BUILD_BATCH`-sized sub-batches
+ * instead of one call, concatenating the results. Splitting a component's
+ * `count` into smaller calls against the SAME `rng` stream and concatenating
+ * in order produces byte-identical output to one `spec.build(spec.count)`
+ * call — each sub-batch only ever indexes its own freshly-allocated output
+ * arrays, so the point-generation loop can't tell it's being resumed rather
+ * than run once start-to-finish. `createGalaxyIncremental` relies on exactly
+ * this property; `galaxy.test.ts` verifies it directly.
+ */
+function buildChunked(spec: ComponentSpec): GalaxyGeometry {
+  return concatGeometry(makeBatchSizes(spec.count).map((n) => spec.build(n)));
+}
+
+/**
+ * Same output as `createGalaxy` — bit-for-bit, given the same seed and
+ * instance, because both derive their component list from the single
+ * `galaxyComponentSpecs` above — built across many time-boxed `step()` calls
  * instead of one synchronous call. A full `createGalaxy` call allocates ~120k
  * points and measured 25-55ms of wall time on desktop (see task-13-report.md)
  * — a visible dropped frame or two if it runs inside a single
  * `requestAnimationFrame` callback. The hero scheduler spawns a galaxy while
  * it's still at `FAR`, where `fadeAt` is 0, so nothing is lost by spreading
- * the five point builders — disk, then bulge, then dust, then HII and bar —
- * across as many `step()` calls as it takes; the caller adds the finished
- * `group` to the scene only once `step()` returns non-null.
+ * the build across as many `step()` calls as it takes; the caller adds the
+ * finished `group` to the scene only once `step()` returns non-null.
  */
 export function createGalaxyIncremental(
   ctx: SpaceCtx,
@@ -718,38 +799,15 @@ export function createGalaxyIncremental(
   },
 ): { step: (budgetMs: number) => GalaxyHandle | null } {
   const { instance: inst, worldSize } = opts;
-  const { diskCount, bulgeCount, dustCount, hiiCount, barCount } = galaxyBudget(ctx, opts.pointBudget);
+  const specs = galaxyComponentSpecs(ctx, inst, worldSize, opts.pointBudget);
 
-  const scaleLength = worldSize * 0.14;
-  const scaleRadius = scaleLength * 0.3;
-
-  type Job = { chunks: GalaxyGeometry[]; queue: number[]; build: (n: number) => GalaxyGeometry };
-  const disk: Job = {
+  type Job = { key: ComponentSpec['key']; chunks: GalaxyGeometry[]; queue: number[]; build: (n: number) => GalaxyGeometry };
+  const jobs: Job[] = specs.map((spec) => ({
+    key: spec.key,
     chunks: [],
-    queue: makeBatchSizes(diskCount),
-    build: (n) => buildDiskPoints(ctx.rng, inst, n, scaleLength),
-  };
-  const bulge: Job = {
-    chunks: [],
-    queue: makeBatchSizes(bulgeCount),
-    build: (n) => buildBulgePoints(ctx.rng, inst, n, scaleRadius),
-  };
-  const dust: Job = {
-    chunks: [],
-    queue: makeBatchSizes(dustCount),
-    build: (n) => buildDustPoints(ctx.rng, inst, n, scaleLength),
-  };
-  const hii: Job = {
-    chunks: [],
-    queue: makeBatchSizes(hiiCount),
-    build: (n) => buildHiiPoints(ctx.rng, inst, n, scaleLength),
-  };
-  const bar: Job = {
-    chunks: [],
-    queue: makeBatchSizes(barCount),
-    build: (n) => buildBarPoints(ctx.rng, inst, n, scaleLength),
-  };
-  const jobs: Job[] = [disk, bulge, dust, hii, bar];
+    queue: makeBatchSizes(spec.count),
+    build: spec.build,
+  }));
   let jobIndex = 0;
 
   const step = (budgetMs: number): GalaxyHandle | null => {
@@ -765,14 +823,14 @@ export function createGalaxyIncremental(
       if (performance.now() - start >= budgetMs) return null;
     }
 
-    return assembleGalaxy(ctx, inst, worldSize, {
-      diskGeo: concatGeometry(disk.chunks),
-      bulgeGeo: concatGeometry(bulge.chunks),
-      hiiGeo: concatGeometry(hii.chunks),
-      barGeo: concatGeometry(bar.chunks),
-      dustGeo: concatGeometry(dust.chunks),
-    });
+    const geos = geosByKey(jobs.map((job) => ({ key: job.key, geo: concatGeometry(job.chunks) })));
+    return assembleGalaxy(ctx, inst, worldSize, geos);
   };
 
   return { step };
 }
+
+// Exported for testing only — lets galaxy.test.ts verify that chunking a
+// component's build doesn't change its output, without needing a
+// `THREE.WebGLRenderer` (see `galaxyComponentSpecs`'s doc comment).
+export const _internal = { buildChunked };

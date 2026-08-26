@@ -8,6 +8,8 @@ import {
   buildHiiPoints,
   buildBarPoints,
   buildDustPoints,
+  galaxyComponentSpecs,
+  _internal,
   type GalaxyGeometry,
 } from './galaxy';
 
@@ -359,5 +361,66 @@ describe('buildDustPoints', () => {
     // Dust crests upstream of it — negative, and clearly separated.
     expect(dustCrest).toBeLessThan(-0.15);
     expect(starCrest - dustCrest).toBeGreaterThan(0.2);
+  });
+});
+
+
+describe('galaxyComponentSpecs (shared build order for createGalaxy / createGalaxyIncremental)', () => {
+  // Regression test for a Task 13 review finding: createGalaxyIncremental had
+  // drifted to a different component order (disk/bulge/dust/hii/bar) than
+  // createGalaxy (disk/bulge/hii/bar/dust). Same rng stream, different order,
+  // means different points for the same seed — and ?spacelab (which always
+  // uses createGalaxy) silently stopped matching the live site's incremental
+  // path. Both now derive their component list from this one function, so
+  // this test pins the order at its single source of truth.
+  it('lists components in a fixed order', () => {
+    const inst = instanceOf('SBb', 20);
+    const specs = galaxyComponentSpecs({ rng: makeRng(20), isMobile: false }, inst, 900, 120000);
+    expect(specs.map((s) => s.key)).toEqual(['disk', 'bulge', 'hii', 'bar', 'dust']);
+  });
+
+  // createGalaxyIncremental doesn't call spec.build(spec.count) directly — it
+  // splits each component's count into BUILD_BATCH-sized calls spread across
+  // many step() calls, then concatenates. This verifies that splitting +
+  // concatenating (exercised here via the same internal helper
+  // createGalaxyIncremental uses per component) reproduces the exact output
+  // of one unsplit call, for every component kind including the ones that
+  // early-return EMPTY_GEOMETRY (bar/dust on an unbarred/dustless preset).
+  //
+  // This stops short of driving createGalaxyIncremental.step() itself to
+  // completion: step() only becomes the point of assembleGalaxy(), which
+  // reads ctx.renderer.getPixelRatio() — a real THREE.WebGLRenderer needs a
+  // WebGL context this project's node-based vitest environment doesn't have
+  // (see vitest.config.ts), and faking one would validate a mock instead of
+  // real renderer behaviour. The pure, renderer-free half of the pipeline —
+  // which components, in what order, and whether chunking changes their
+  // output — is exercised directly here instead.
+  it('produces identical geometry whether built whole or in BUILD_BATCH-sized chunks', () => {
+    const inst = instanceOf('SBb', 21);
+    const worldSize = 900;
+    const budget = 120000;
+
+    const wholeSpecs = galaxyComponentSpecs({ rng: makeRng(21), isMobile: false }, inst, worldSize, budget);
+    const chunkedSpecs = galaxyComponentSpecs({ rng: makeRng(21), isMobile: false }, inst, worldSize, budget);
+
+    for (let i = 0; i < wholeSpecs.length; i++) {
+      const whole = wholeSpecs[i].build(wholeSpecs[i].count);
+      const chunked = _internal.buildChunked(chunkedSpecs[i]);
+      expect(chunked.count).toBe(whole.count);
+      expect(Array.from(chunked.positions)).toEqual(Array.from(whole.positions));
+      expect(Array.from(chunked.colors)).toEqual(Array.from(whole.colors));
+      expect(Array.from(chunked.sizes)).toEqual(Array.from(whole.sizes));
+      expect(Array.from(chunked.nearHalf)).toEqual(Array.from(whole.nearHalf));
+    }
+  });
+
+  it('halves the point budget on mobile, same as createGalaxy', () => {
+    const inst = instanceOf('Sc', 22);
+    const desktop = galaxyComponentSpecs({ rng: makeRng(22), isMobile: false }, inst, 900, 120000);
+    const mobile = galaxyComponentSpecs({ rng: makeRng(22), isMobile: true }, inst, 900, 120000);
+    const totalDesktop = desktop.reduce((sum, s) => sum + s.count, 0);
+    const totalMobile = mobile.reduce((sum, s) => sum + s.count, 0);
+    expect(totalMobile).toBeLessThan(totalDesktop);
+    expect(totalMobile).toBeCloseTo(totalDesktop / 2, -1);
   });
 });
