@@ -1908,7 +1908,9 @@ export const DUST_FRAG = /* glsl */ `
     float r2 = dot(d, d);
     if (r2 > 0.25) discard;
     float soft = smoothstep(0.25, 0.0, r2);
-    gl_FragColor = vec4(vColor, soft * vAlpha);
+    // Premultiplied: with OneMinusSrcColor the blend reads the COLOR, so the
+    // soft radial falloff and the per-object opacity must be folded into it.
+    gl_FragColor = vec4(vColor * soft * vAlpha, 1.0);
   }
 `;
 ```
@@ -1987,7 +1989,13 @@ const dustMaterial = new THREE.ShaderMaterial({
   depthWrite: false,
   blending: THREE.CustomBlending,
   blendSrc: THREE.ZeroFactor,
-  blendDst: THREE.OneMinusSrcAlphaFactor,
+  // OneMinusSrcCOLOR, not OneMinusSrcAlpha: `result = dst * (1 - srcColor)`
+  // attenuates each channel independently, so the per-channel extinction
+  // buildDustPoints writes (r 0.75 / g 0.9 / b 1.0 of strength) actually
+  // reaches the framebuffer and reddens the light behind the lane. With
+  // OneMinusSrcAlpha the source colour is discarded entirely and dust darkens
+  // neutrally — grey lanes instead of the brown ones real dust produces.
+  blendDst: THREE.OneMinusSrcColorFactor,
 });
 ```
 
