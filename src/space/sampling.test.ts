@@ -6,6 +6,8 @@ import {
   sampleHernquistRadius,
   samplePlummerRadius,
   sampleInclination,
+  sampleUnitVector,
+  samplePowerLawBrightness,
   spiralArmAngle,
 } from './sampling';
 
@@ -128,5 +130,74 @@ describe('spiralArmAngle', () => {
     const tight = Math.abs(spiralArmAngle(4, 1, (10 * Math.PI) / 180));
     const open = Math.abs(spiralArmAngle(4, 1, (25 * Math.PI) / 180));
     expect(tight).toBeGreaterThan(open);
+  });
+});
+
+describe('samplePowerLawBrightness', () => {
+  it('all draws land within [min, max]', () => {
+    const rng = makeRng(10);
+    const min = 0.6;
+    const max = 3.2;
+    const alpha = -2.35;
+    for (let i = 0; i < 5000; i++) {
+      const v = samplePowerLawBrightness(rng, min, max, alpha);
+      expect(v).toBeGreaterThanOrEqual(min);
+      expect(v).toBeLessThanOrEqual(max);
+    }
+  });
+
+  it('with steep negative alpha the distribution is bottom-heavy', () => {
+    const rng = makeRng(11);
+    const min = 0.6;
+    const max = 3.2;
+    const alpha = -3; // Steep negative alpha
+    const med = median(() => samplePowerLawBrightness(rng, min, max, alpha));
+    const midpoint = (min + max) / 2;
+    expect(med).toBeLessThan(midpoint);
+  });
+
+  it('alpha === -1 returns finite log-uniform values in range with correct median', () => {
+    const rng = makeRng(12);
+    const min = 0.6;
+    const max = 3.2;
+    const alpha = -1;
+    const expectedMedian = Math.sqrt(min * max); // Geometric mean
+    const med = median(() => samplePowerLawBrightness(rng, min, max, alpha));
+    expect(med).toBeCloseTo(expectedMedian, 1);
+    // Also check that all values are finite and in range
+    for (let i = 0; i < 1000; i++) {
+      const v = samplePowerLawBrightness(rng, min, max, alpha);
+      expect(Number.isFinite(v)).toBe(true);
+      expect(v).toBeGreaterThanOrEqual(min);
+      expect(v).toBeLessThanOrEqual(max);
+    }
+  });
+});
+
+describe('sampleUnitVector', () => {
+  it('every result has length 1', () => {
+    const rng = makeRng(13);
+    for (let i = 0; i < 5000; i++) {
+      const [x, y, z] = sampleUnitVector(rng);
+      const len = Math.sqrt(x * x + y * y + z * z);
+      expect(len).toBeCloseTo(1, 10);
+    }
+  });
+
+  it('does NOT cluster at the poles (z distribution is roughly uniform)', () => {
+    const rng = makeRng(14);
+    let sumZ = 0;
+    let countAboveHalf = 0;
+    for (let i = 0; i < N; i++) {
+      const [, , z] = sampleUnitVector(rng);
+      sumZ += z;
+      if (Math.abs(z) > 0.5) countAboveHalf++;
+    }
+    const meanZ = sumZ / N;
+    const fracAboveHalf = countAboveHalf / N;
+    // If uniformly distributed on [-1, 1], mean should be 0
+    expect(Math.abs(meanZ)).toBeLessThan(0.01);
+    // Fraction with |z| > 0.5 should be about 0.5 (50% of the range)
+    expect(fracAboveHalf).toBeCloseTo(0.5, 2);
   });
 });

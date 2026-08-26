@@ -26,8 +26,8 @@ export function sampleExponentialDiskRadius(rng: () => number, h: number): numbe
 export function sampleSech2Height(rng: () => number, z0: number): number {
   // Guard the endpoints: atanh(±1) is infinite, and a PRNG returning exactly 0
   // would otherwise emit an infinite height that poisons the whole buffer.
-  const u = Math.min(1 - 1e-12, Math.max(-1 + 1e-12, rng() * 2 - 1));
-  return z0 * Math.atanh(u);
+  const t = Math.min(1 - 1e-12, Math.max(-1 + 1e-12, rng() * 2 - 1));
+  return z0 * Math.atanh(t);
 }
 
 /**
@@ -81,6 +81,9 @@ export function samplePowerLawBrightness(
   alpha: number,
 ): number {
   const p = alpha + 1;
+  // alpha === -1 makes the pdf 1/x, whose inverse-CDF is log-uniform. The
+  // general form below divides by p, so it would return NaN here.
+  if (p === 0) return min * Math.pow(max / min, rng());
   const lo = Math.pow(min, p);
   const hi = Math.pow(max, p);
   return Math.pow(lo + rng() * (hi - lo), 1 / p);
