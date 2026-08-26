@@ -455,40 +455,39 @@ const NEAR_TIER = 2; // additive: near disk, near bulge, near HII, near bar
  *    z-rotation — being a rotation about the axis it doesn't touch — leaves
  *    that z untouched while still spinning the galaxy's on-sky orientation.
  */
-export function createGalaxy(
+/**
+ * The handle `createGalaxy`/`createGalaxyIncremental` return. Extends the
+ * shared `SpaceObject` contract with one galaxy-only hook: `advance` drives
+ * the star material's `uTime` uniform (per-point twinkle), which the nebula
+ * and field starfields already advance from their own `setWarp`/`advance`
+ * calls but which this module never wired up until now. This is deliberately
+ * NOT folded into `SpaceObject` itself — the nebula/field/meteor handles have
+ * no equivalent uniform to drive and shouldn't be forced to grow a no-op stub.
+ */
+export type GalaxyHandle = SpaceObject & {
+  advance: (elapsedTime: number) => void;
+};
+
+/**
+ * Assemble five already-built `GalaxyGeometry` bags into one renderable
+ * galaxy. Split out of `createGalaxy` so `createGalaxyIncremental` — which
+ * builds the same five bags across many time-boxed steps instead of one
+ * synchronous call — can share every bit of draw-order/material/disposal
+ * logic below instead of duplicating it.
+ */
+function assembleGalaxy(
   ctx: SpaceCtx,
-  opts: {
-    instance: GalaxyInstance;
-    worldSize: number;
-    pointBudget: number;
+  inst: GalaxyInstance,
+  worldSize: number,
+  geos: {
+    diskGeo: GalaxyGeometry;
+    bulgeGeo: GalaxyGeometry;
+    hiiGeo: GalaxyGeometry;
+    barGeo: GalaxyGeometry;
+    dustGeo: GalaxyGeometry;
   },
-): SpaceObject {
-  const { instance: inst, worldSize } = opts;
-
-  // Fixed allocation across components, halved on mobile. buildHiiPoints
-  // further scales its own share by hiiAbundance internally, so the 4% share
-  // handed to it is a budget, not the eventual point count — do not pre-scale.
-  const budget = ctx.isMobile ? Math.floor(opts.pointBudget / 2) : opts.pointBudget;
-  const diskCount = Math.round(budget * 0.58);
-  const bulgeCount = Math.round(budget * 0.25);
-  const dustCount = Math.round(budget * 0.12);
-  const hiiCount = Math.round(budget * 0.04);
-  const barCount = Math.round(budget * 0.01);
-
-  // Disk exponential scale length as a fraction of the requested world size.
-  // `worldSize` is authoritative for overall size — per-instance jitter (e.g.
-  // `inst.scale`) is the caller's job, folded into `worldSize` before it gets
-  // here, not reapplied inside this function. The bulge's Hernquist radius is
-  // a smaller fraction of that, since real bulges are far more compact than
-  // the disk they sit inside.
-  const scaleLength = worldSize * 0.14;
-  const scaleRadius = scaleLength * 0.3;
-
-  const diskGeo = buildDiskPoints(ctx.rng, inst, diskCount, scaleLength);
-  const bulgeGeo = buildBulgePoints(ctx.rng, inst, bulgeCount, scaleRadius);
-  const hiiGeo = buildHiiPoints(ctx.rng, inst, hiiCount, scaleLength);
-  const barGeo = buildBarPoints(ctx.rng, inst, barCount, scaleLength);
-  const dustGeo = buildDustPoints(ctx.rng, inst, dustCount, scaleLength);
+): GalaxyHandle {
+  const { diskGeo, bulgeGeo, hiiGeo, barGeo, dustGeo } = geos;
 
   const diskHalves = splitByNearHalf(diskGeo);
   const bulgeHalves = splitByNearHalf(bulgeGeo);
@@ -596,11 +595,184 @@ export function createGalaxy(
     dustMat.uniforms.uOpacity.value = o;
   };
 
+  // Drives the same per-point twinkle the field starfield and nebula clouds
+  // already animate via their own `uTime` uniforms (see STAR_VERT). Without
+  // this the galaxy's twinkle sits frozen at t=0 for its entire time on screen.
+  const advance = (elapsedTime: number) => {
+    starMat.uniforms.uTime.value = elapsedTime;
+    dustMat.uniforms.uTime.value = elapsedTime;
+  };
+
   const dispose = () => {
     for (const g of geometries) g.dispose();
     starMat.dispose();
     dustMat.dispose();
   };
 
-  return { group: outer, setOpacity, dispose };
+  return { group: outer, setOpacity, dispose, advance };
+}
+
+/**
+ * Roll the fixed per-component point allocation for a `pointBudget`. Shared by
+ * `createGalaxy` and `createGalaxyIncremental` so the two stay in lockstep —
+ * chunking how the points get built must not change how many of each kind get
+ * built.
+ */
+function galaxyBudget(ctx: SpaceCtx, pointBudget: number) {
+  // Fixed allocation across components, halved on mobile. buildHiiPoints
+  // further scales its own share by hiiAbundance internally, so the 4% share
+  // handed to it is a budget, not the eventual point count — do not pre-scale.
+  const budget = ctx.isMobile ? Math.floor(pointBudget / 2) : pointBudget;
+  return {
+    diskCount: Math.round(budget * 0.58),
+    bulgeCount: Math.round(budget * 0.25),
+    dustCount: Math.round(budget * 0.12),
+    hiiCount: Math.round(budget * 0.04),
+    barCount: Math.round(budget * 0.01),
+  };
+}
+
+export function createGalaxy(
+  ctx: SpaceCtx,
+  opts: {
+    instance: GalaxyInstance;
+    worldSize: number;
+    pointBudget: number;
+  },
+): GalaxyHandle {
+  const { instance: inst, worldSize } = opts;
+  const { diskCount, bulgeCount, dustCount, hiiCount, barCount } = galaxyBudget(ctx, opts.pointBudget);
+
+  // Disk exponential scale length as a fraction of the requested world size.
+  // `worldSize` is authoritative for overall size — per-instance jitter (e.g.
+  // `inst.scale`) is the caller's job, folded into `worldSize` before it gets
+  // here, not reapplied inside this function. The bulge's Hernquist radius is
+  // a smaller fraction of that, since real bulges are far more compact than
+  // the disk they sit inside.
+  const scaleLength = worldSize * 0.14;
+  const scaleRadius = scaleLength * 0.3;
+
+  const diskGeo = buildDiskPoints(ctx.rng, inst, diskCount, scaleLength);
+  const bulgeGeo = buildBulgePoints(ctx.rng, inst, bulgeCount, scaleRadius);
+  const hiiGeo = buildHiiPoints(ctx.rng, inst, hiiCount, scaleLength);
+  const barGeo = buildBarPoints(ctx.rng, inst, barCount, scaleLength);
+  const dustGeo = buildDustPoints(ctx.rng, inst, dustCount, scaleLength);
+
+  return assembleGalaxy(ctx, inst, worldSize, { diskGeo, bulgeGeo, hiiGeo, barGeo, dustGeo });
+}
+
+/** Merge several same-shaped `GalaxyGeometry` chunks, built independently, into one. */
+function concatGeometry(chunks: GalaxyGeometry[]): GalaxyGeometry {
+  let total = 0;
+  for (const c of chunks) total += c.count;
+  const positions = new Float32Array(total * 3);
+  const colors = new Float32Array(total * 3);
+  const sizes = new Float32Array(total);
+  const nearHalf = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    positions.set(c.positions, offset * 3);
+    colors.set(c.colors, offset * 3);
+    sizes.set(c.sizes, offset);
+    nearHalf.set(c.nearHalf, offset);
+    offset += c.count;
+  }
+  return { positions, colors, sizes, nearHalf, count: total };
+}
+
+// Points per sub-batch while chunk-building a galaxy incrementally. Measured
+// (see task-13-report.md): `buildDiskPoints` — the heaviest of the five, since
+// it parses two hex colours per point via `mixHex` — costs roughly
+// 0.35-0.45us/point, so a 6000-point batch runs ~2-3ms: comfortably inside a
+// single frame even stacked with the rest of the scene's per-frame work.
+const BUILD_BATCH = 6000;
+
+function makeBatchSizes(total: number): number[] {
+  const sizes: number[] = [];
+  let remaining = total;
+  while (remaining > 0) {
+    const n = Math.min(BUILD_BATCH, remaining);
+    sizes.push(n);
+    remaining -= n;
+  }
+  return sizes;
+}
+
+/**
+ * Same output as `createGalaxy`, built across many time-boxed `step()` calls
+ * instead of one synchronous call. A full `createGalaxy` call allocates ~120k
+ * points and measured 25-55ms of wall time on desktop (see task-13-report.md)
+ * — a visible dropped frame or two if it runs inside a single
+ * `requestAnimationFrame` callback. The hero scheduler spawns a galaxy while
+ * it's still at `FAR`, where `fadeAt` is 0, so nothing is lost by spreading
+ * the five point builders — disk, then bulge, then dust, then HII and bar —
+ * across as many `step()` calls as it takes; the caller adds the finished
+ * `group` to the scene only once `step()` returns non-null.
+ */
+export function createGalaxyIncremental(
+  ctx: SpaceCtx,
+  opts: {
+    instance: GalaxyInstance;
+    worldSize: number;
+    pointBudget: number;
+  },
+): { step: (budgetMs: number) => GalaxyHandle | null } {
+  const { instance: inst, worldSize } = opts;
+  const { diskCount, bulgeCount, dustCount, hiiCount, barCount } = galaxyBudget(ctx, opts.pointBudget);
+
+  const scaleLength = worldSize * 0.14;
+  const scaleRadius = scaleLength * 0.3;
+
+  type Job = { chunks: GalaxyGeometry[]; queue: number[]; build: (n: number) => GalaxyGeometry };
+  const disk: Job = {
+    chunks: [],
+    queue: makeBatchSizes(diskCount),
+    build: (n) => buildDiskPoints(ctx.rng, inst, n, scaleLength),
+  };
+  const bulge: Job = {
+    chunks: [],
+    queue: makeBatchSizes(bulgeCount),
+    build: (n) => buildBulgePoints(ctx.rng, inst, n, scaleRadius),
+  };
+  const dust: Job = {
+    chunks: [],
+    queue: makeBatchSizes(dustCount),
+    build: (n) => buildDustPoints(ctx.rng, inst, n, scaleLength),
+  };
+  const hii: Job = {
+    chunks: [],
+    queue: makeBatchSizes(hiiCount),
+    build: (n) => buildHiiPoints(ctx.rng, inst, n, scaleLength),
+  };
+  const bar: Job = {
+    chunks: [],
+    queue: makeBatchSizes(barCount),
+    build: (n) => buildBarPoints(ctx.rng, inst, n, scaleLength),
+  };
+  const jobs: Job[] = [disk, bulge, dust, hii, bar];
+  let jobIndex = 0;
+
+  const step = (budgetMs: number): GalaxyHandle | null => {
+    const start = performance.now();
+    while (jobIndex < jobs.length) {
+      const job = jobs[jobIndex];
+      if (job.queue.length === 0) {
+        jobIndex++;
+        continue;
+      }
+      const n = job.queue.shift()!;
+      job.chunks.push(job.build(n));
+      if (performance.now() - start >= budgetMs) return null;
+    }
+
+    return assembleGalaxy(ctx, inst, worldSize, {
+      diskGeo: concatGeometry(disk.chunks),
+      bulgeGeo: concatGeometry(bulge.chunks),
+      hiiGeo: concatGeometry(hii.chunks),
+      barGeo: concatGeometry(bar.chunks),
+      dustGeo: concatGeometry(dust.chunks),
+    });
+  };
+
+  return { step };
 }

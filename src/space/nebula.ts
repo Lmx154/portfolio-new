@@ -68,8 +68,6 @@ type Cloud = { x: number; y: number; z: number; size: number };
 
 export type NebulaField = {
   group: THREE.Object3D;
-  /** Star positions/colours/sizes, shared with the scene's point cloud. */
-  points: THREE.Points;
   /** Advance clouds by `dz`, recycling any that pass `near`. */
   advance: (dz: number, fadeAt: (z: number) => number) => void;
   /** Drive the warp envelope: dims the cloud stars and advances their twinkle clock. */
@@ -201,9 +199,8 @@ export function createNebulaField(
   const gasMeshes: THREE.Mesh[] = [];
   const gasMats: THREE.ShaderMaterial[] = [];
   const gasTargets: THREE.WebGLRenderTarget[] = [];
-  // Not shared with the legacy galaxy quads (which own their own plane) — this
-  // trivial unit geometry has no tunable state, so duplicating it carries no
-  // drift risk.
+  // This module's own plane geometry — trivial unit geometry with no tunable
+  // state, so it owns its own copy rather than sharing one from elsewhere.
   const planeGeo = new THREE.PlaneGeometry(1, 1);
 
   const makeQuadMaterial = (tex: THREE.Texture) =>
@@ -383,5 +380,5 @@ export function createNebulaField(
     rt.dispose();
   };
 
-  return { group, points, advance, setWarp, rebake, onResize, dispose };
+  return { group, advance, setWarp, rebake, onResize, dispose };
 }

@@ -17,8 +17,6 @@ import type { SpaceCtx } from './types';
 
 export type FieldStars = {
   group: THREE.Object3D;
-  /** Star positions/colours/sizes, shared with the scene's point cloud. */
-  points: THREE.Points;
   /** Advance stars by `step`, recycling any that pass `near`. */
   advance: (step: number) => void;
   /** Drive the warp envelope: star dim/twinkle time and streak stretch/visibility.
@@ -181,5 +179,5 @@ export function createFieldStars(
     streakMat.dispose();
   };
 
-  return { group, points, advance, setWarp, onResize, dispose };
+  return { group, advance, setWarp, onResize, dispose };
 }

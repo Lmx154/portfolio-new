@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { NOISE_GLSL, QUAD_VERT, QUAD_FRAG } from '../space/shaders';
 import { createBakeRig } from '../space/bakeRig';
 import { createNebulaField } from '../space/nebula';
 import { createFieldStars } from '../space/field';
 import { createMeteors } from '../space/meteors';
+import { createGalaxyIncremental, type GalaxyHandle } from '../space/galaxy';
+import { rollGalaxyInstance } from '../space/presets';
 import { makeRng } from '../space/rng';
 import type { SpaceCtx } from '../space/types';
 
@@ -23,9 +24,9 @@ import type { SpaceCtx } from '../space/types';
  * importance-sampled from that exact output, so they sit in the bright
  * clumps and take the local gas color.
  *
- * Extras for realism: distant spiral galaxies (procedural, baked the same
- * way) drifting slowly past, occasional shooting stars, and subtle per-star
- * twinkle.
+ * Extras for realism: one large "hero" galaxy (a real 3D point-cloud disk +
+ * bulge + dust + HII regions, see src/space/galaxy.ts) drifting slowly past
+ * every so often, occasional shooting stars, and subtle per-star twinkle.
  *
  * Pure Three.js — no asset files, no new deps.
  */
@@ -34,7 +35,6 @@ import type { SpaceCtx } from '../space/types';
 const FIELD_STARS = 1400;
 const CLUSTER_COUNT = 4;
 const STARS_PER_CLUSTER = 420;
-const GALAXY_COUNT = 3;
 const METEOR_MAX = 3;
 
 const FAR = -2200;
@@ -59,109 +59,23 @@ const GALAXY_SPEED = 0.35; // galaxies drift slower than the field → feel dist
 const METEOR_MIN_WAIT = 5; // seconds between shooting stars (min)
 const METEOR_RAND_WAIT = 11; // + up to this many more
 
+// ---- Hero galaxy scheduler -------------------------------------------------
+// Hero objects are rare and large: at most one on screen, spawned far away and
+// retired once it passes the camera. This is what buys the on-screen size that
+// makes real structure visible — the old renderer showed three small galaxies
+// at once and minified all the detail away.
+const HERO_MAX = 1; // never more than one hero galaxy at a time
+const HERO_MIN_GAP = 26; // seconds after one retires before the next spawns
+const HERO_RAND_GAP = 18; // plus up to this many more
+const HERO_SIZE = 900; // world units; ~600-1200 px on screen near mid-field
+const HERO_POINT_BUDGET = 120000; // createGalaxy halves this internally on mobile
+// Per-frame time budget (ms) for chunked hero construction — see galaxy.ts's
+// createGalaxyIncremental. Comfortably under a 16.7ms (60fps) frame even
+// stacked with the rest of this loop's work; the build simply takes a few
+// more frames on a slower device instead of ever blocking one.
+const HERO_BUILD_BUDGET_MS = 6;
+
 const SPACE_VIGNETTE = 'radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0) 65%)';
-
-// ---- Galaxy bake shader (runs ONCE per galaxy, offscreen) -------------------
-// Four morphologies, picked per galaxy: 0 = classic spiral, 1 = barred spiral,
-// 2 = elliptical, 3 = irregular. On top of the smooth light, layers of
-// resolved star specks (soft gaussian dots a few texels wide, so they survive
-// mip-mapped downscaling on screen) and pink HII knots along spiral arms.
-const GALAXY_BAKE_FRAG = /* glsl */ `
-  varying vec2 vUv;
-  uniform float uGSeed;
-  uniform float uType;
-  uniform float uArms;
-  uniform float uTwist;
-  uniform float uBulge;
-  uniform float uArmSharp;
-  uniform vec3 uCoreColor;
-  uniform vec3 uArmColor;
-
-  ${NOISE_GLSL}
-
-  // One layer of resolved stars: a hashed grid where sparse cells hold a soft
-  // round dot at a random offset. Dots span a few texels — single-texel
-  // speckle disappears the moment the texture is minified.
-  float starLayer(vec2 c, float scale, float thresh, float seed) {
-    vec2 p = c * scale + seed;
-    vec2 cell = floor(p);
-    float on = step(thresh, hash12(cell));
-    vec2 pos = vec2(hash12(cell + 17.1), hash12(cell + 42.7)) * 0.6 + 0.2;
-    float d = length(fract(p) - pos);
-    return on * exp(-d * d * 55.0) * (0.4 + 0.6 * hash12(cell + 91.3));
-  }
-
-  void main() {
-    vec2 c = vUv * 2.0 - 1.0;
-    float r = length(c) + 1e-4;
-    float theta = atan(c.y, c.x);
-    float n = fbm(c * 3.5 + uGSeed);
-
-    float dens = 0.0;  // disc/arm light (arm-colored, young stars)
-    float coreD = 0.0; // bulge/halo light (core-colored, old stars)
-    float armHere = 0.0;
-
-    if (uType < 0.5) {
-      // -- Classic spiral: log-spiral arms winding out of a compact bulge.
-      float swirl = theta * uArms + log(max(r, 0.05)) * uTwist + uGSeed;
-      armHere = pow(0.5 + 0.5 * cos(swirl), uArmSharp);
-      float disc = exp(-r * 2.7) * smoothstep(1.0, 0.2, r);
-      dens = disc * (0.08 + 0.92 * armHere) * (0.7 + 0.6 * n);
-      coreD = exp(-r * r * uBulge);
-      float dust = smoothstep(0.5, 0.85, fbm(c * 5.0 + uGSeed + 31.0)) * smoothstep(0.06, 0.3, r);
-      dens *= 1.0 - 0.6 * dust * armHere;
-    } else if (uType < 1.5) {
-      // -- Barred spiral: a bright stellar bar; two arms sweep from its ends.
-      float barLen = 0.4, barW = 0.12;
-      float bar = exp(-(c.x * c.x) / (barLen * barLen) - (c.y * c.y) / (barW * barW));
-      // Phase-locked so arm crests meet the bar tips (theta 0 / pi at r=barLen).
-      float swirl = theta * 2.0 + log(max(r, 0.05)) * uTwist - log(barLen) * uTwist;
-      armHere = pow(0.5 + 0.5 * cos(swirl), uArmSharp);
-      float disc = exp(-r * 2.6) * smoothstep(1.0, 0.2, r);
-      dens = disc * (0.06 + 0.94 * armHere) * smoothstep(0.16, 0.45, r) * (0.7 + 0.6 * n);
-      dens += bar * 0.85;
-      coreD = exp(-r * r * uBulge);
-      float dust = smoothstep(0.5, 0.85, fbm(c * 5.0 + uGSeed + 31.0)) * smoothstep(0.1, 0.35, r);
-      dens *= 1.0 - 0.55 * dust * armHere;
-    } else if (uType < 2.5) {
-      // -- Elliptical: smooth old-star glow, eccentric, structureless but for
-      // a whisper of noise; broad faint halo.
-      vec2 e = c * vec2(1.0, 1.0 + uArms * 0.35); // reuse uArms as eccentricity
-      float re = length(e) + 1e-4;
-      coreD = exp(-re * 3.6) * 0.85 + exp(-re * re * uBulge) * 0.8;
-      coreD *= 0.9 + 0.2 * n;
-      dens = coreD * 0.12;
-    } else {
-      // -- Irregular: no symmetry, just clumpy blue star-forming knots.
-      float clump = smoothstep(0.45, 0.8, fbm(c * 2.6 + uGSeed));
-      float env = exp(-r * r * 2.4) * (0.5 + 0.9 * fbm(c * 1.3 + uGSeed + 7.0));
-      dens = clump * env * 1.5;
-      armHere = clump;
-      coreD = env * 0.12;
-    }
-
-    vec3 col = uArmColor * dens * 1.5 + uCoreColor * (coreD * 1.15 + dens * 0.15);
-
-    // Pink HII star-forming knots along spiral arms / irregular clumps.
-    if (uType < 1.5 || uType > 2.5) {
-      float knots = smoothstep(0.55, 0.9, fbm(c * 6.5 + uGSeed + 53.0)) * dens * armHere;
-      col += vec3(0.95, 0.42, 0.5) * knots * 0.6;
-    }
-
-    // Resolved star specks: bright blue-white giants in the disc and arms,
-    // a fine warm grain over the bulge.
-    float discStars = starLayer(c, 26.0, 0.93, uGSeed * 7.0)
-                    + starLayer(c, 44.0, 0.9, uGSeed * 13.0) * 0.6;
-    float coreStars = starLayer(c, 58.0, 0.78, uGSeed * 3.0) * 0.45;
-    float speck = discStars * smoothstep(0.03, 0.22, dens + coreD * 0.4) + coreStars * coreD;
-    vec3 speckCol = mix(vec3(0.72, 0.84, 1.0), vec3(1.0, 0.9, 0.72), clamp(coreD * 1.4, 0.0, 1.0));
-    col += speckCol * speck * 1.15;
-
-    float alpha = clamp(dens * 1.4 + coreD * 1.05 + speck * 0.8, 0.0, 1.0);
-    alpha *= smoothstep(1.0, 0.55, r);
-    gl_FragColor = vec4(col, alpha);
-  }
-`;
 
 const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -179,7 +93,6 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const isMobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
-    const GALAXY_BAKE_RES = isMobile ? 256 : 512;
 
     // --- Renderer / scene / camera ---
     // No MSAA: stars are soft sprites and gas quads fade at their edges, so
@@ -202,7 +115,10 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     const sizeScale = () => window.innerHeight * 0.5;
 
     // -----------------------------------------------------------------------
-    // Bake rig: one ortho quad scene reused for every nebula/galaxy bake.
+    // Bake rig: one ortho quad scene reused for every nebula bake. The hero
+    // galaxy doesn't bake anything — it's plain BufferGeometry/ShaderMaterial
+    // point clouds — but SpaceCtx is shared, so it still carries bakeInto/
+    // makeTarget for the nebula field to use.
     // -----------------------------------------------------------------------
     const { bakeInto, makeTarget, dispose: disposeBakeRig } = createBakeRig(renderer);
 
@@ -214,25 +130,6 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       // Random per page load; a later `?spacelab` mode will pin this seed.
       rng: makeRng(Math.floor(Math.random() * 0xffffffff)),
     };
-
-    const galaxyBakeMat = new THREE.ShaderMaterial({
-      uniforms: {
-        uGSeed: { value: 0 },
-        uType: { value: 0 },
-        uArms: { value: 2 },
-        uTwist: { value: 4.5 },
-        uBulge: { value: 26 },
-        uArmSharp: { value: 3 },
-        uCoreColor: { value: new THREE.Color('#ffe9c4') },
-        uArmColor: { value: new THREE.Color('#9db8e8') },
-      },
-      vertexShader: QUAD_VERT,
-      fragmentShader: GALAXY_BAKE_FRAG,
-      depthTest: false,
-      depthWrite: false,
-      blending: THREE.NoBlending,
-      precision: 'highp',
-    });
 
     // ---------------------------------------------------------------------
     // Field stars (+ warp streaks — a rendering mode of the same buffers)
@@ -278,124 +175,38 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     nebulae.advance(0, fadeAt);
 
     // ---------------------------------------------------------------------
-    // Galaxies: small baked spiral sprites drifting far away
+    // Hero galaxy: one large 3D point-cloud galaxy (src/space/galaxy.ts)
+    // drifting past at a time. Rare-and-large is the point — the old
+    // renderer showed three small baked billboards at once and minified all
+    // the structure (arms, dust lanes, HII knots) away. `createGalaxyIncremental`
+    // spreads its ~120k-point build across many frames (see galaxy.ts) so the
+    // spawn — which happens off-screen, at FAR, where `fadeAt` is 0 — never
+    // costs a dropped frame; the finished `group` is added to the scene only
+    // once the build completes.
     // ---------------------------------------------------------------------
-    const planeGeo = new THREE.PlaneGeometry(1, 1);
+    let hero: GalaxyHandle | null = null;
+    let heroBuild: { step: (budgetMs: number) => GalaxyHandle | null } | null = null;
+    let heroZ = FAR;
+    let heroX = 0;
+    let heroY = 0;
+    // First hero arrives sooner than a full retire-to-spawn gap would give,
+    // so the effect isn't waiting HERO_MIN_GAP seconds after page load.
+    let heroTimer = HERO_MIN_GAP * 0.3;
 
-    const makeQuadMaterial = (tex: THREE.Texture) =>
-      new THREE.ShaderMaterial({
-        uniforms: {
-          uMap: { value: tex },
-          uOpacity: { value: 0 },
-        },
-        vertexShader: QUAD_VERT,
-        fragmentShader: QUAD_FRAG,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
+    const activeHeroCount = () => (hero ? 1 : 0) + (heroBuild ? 1 : 0);
+
+    const spawnHero = () => {
+      if (activeHeroCount() >= HERO_MAX) return;
+      const instance = rollGalaxyInstance(ctx.rng);
+      heroX = (ctx.rng() - 0.5) * Math.abs(FAR) * 0.5;
+      heroY = (ctx.rng() - 0.5) * Math.abs(FAR) * 0.35;
+      heroZ = FAR;
+      heroBuild = createGalaxyIncremental(ctx, {
+        instance,
+        worldSize: HERO_SIZE * instance.scale,
+        pointBudget: HERO_POINT_BUDGET,
       });
-
-    type Galaxy = {
-      x: number;
-      y: number;
-      z: number;
-      size: number;
-      spin: number;
-      bright: number;
-      type: number;
-      mesh: THREE.Mesh;
-      mat: THREE.ShaderMaterial;
-      target: THREE.WebGLRenderTarget;
     };
-    const galaxies: Galaxy[] = [];
-
-    // Morphology mix (0 spiral / 1 barred / 2 elliptical / 3 irregular),
-    // roughly like the bright end of the real population.
-    const rollGalaxyType = () => {
-      const roll = Math.random();
-      if (roll < 0.34) return 0;
-      if (roll < 0.62) return 1;
-      if (roll < 0.83) return 2;
-      return 3;
-    };
-
-    const GALAXY_CORES = ['#ffe9c4', '#fff3e0', '#ffd9a0', '#f2e2c0'];
-    const GALAXY_ARMS = ['#8fb0e8', '#a8c4f0', '#7ea8d8', '#9cc0e4'];
-    const ELLIPTICAL_CORES = ['#ffe2b8', '#f5e6c8', '#ffd9ad'];
-    const IRREGULAR_ARMS = ['#9cc4f0', '#8fd0e8', '#a8c8f8'];
-
-    const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
-
-    const bakeGalaxy = (g: Galaxy) => {
-      const type = g.type;
-      const u = galaxyBakeMat.uniforms;
-      u.uGSeed.value = Math.random() * 40;
-      u.uType.value = type;
-      if (type === 2) {
-        // Elliptical: uArms doubles as eccentricity, bulge is broad.
-        u.uArms.value = Math.random();
-        u.uBulge.value = 6 + Math.random() * 8;
-        (u.uCoreColor.value as THREE.Color).set(pick(ELLIPTICAL_CORES));
-        (u.uArmColor.value as THREE.Color).set(pick(ELLIPTICAL_CORES));
-      } else if (type === 3) {
-        // Irregular: all blue star-forming clumps, no real core.
-        u.uBulge.value = 10;
-        (u.uCoreColor.value as THREE.Color).set(pick(GALAXY_CORES));
-        (u.uArmColor.value as THREE.Color).set(pick(IRREGULAR_ARMS));
-      } else {
-        u.uArms.value = Math.random() < 0.6 ? 2 : 3;
-        u.uTwist.value = (type === 1 ? 3.0 : 3.2) + Math.random() * 2.2;
-        u.uBulge.value = 18 + Math.random() * 22;
-        u.uArmSharp.value = 2.5 + Math.random() * 2.5; // higher → thinner, crisper arms
-        (u.uCoreColor.value as THREE.Color).set(pick(GALAXY_CORES));
-        (u.uArmColor.value as THREE.Color).set(pick(GALAXY_ARMS));
-      }
-      bakeInto(g.target, galaxyBakeMat);
-    };
-
-    const regenGalaxy = (g: Galaxy, z: number) => {
-      const type = rollGalaxyType();
-      g.type = type;
-      const az = Math.abs(FAR);
-      g.x = (Math.random() - 0.5) * 2 * az * 0.55;
-      g.y = (Math.random() - 0.5) * 2 * az * 0.4;
-      g.z = z;
-      g.size = (type === 3 ? 200 : 280) + Math.random() * 260;
-      g.spin = (Math.random() - 0.5) * 0.01; // barely-perceptible in-plane drift
-      // Ellipticals are all bulge — at full brightness they read like a sun.
-      g.bright = (type === 2 ? 0.4 : 0.55) + Math.random() * 0.3;
-      g.mesh.scale.set(g.size, g.size, 1);
-      // Random 3D tilt → elliptical on screen, like a real inclined disc.
-      // Ellipticals/irregulars aren't discs; keep them nearly face-on.
-      const tilt = type >= 2 ? 0.4 : 1.9;
-      g.mesh.rotation.set((Math.random() - 0.5) * tilt, (Math.random() - 0.5) * tilt, Math.random() * Math.PI);
-      bakeGalaxy(g);
-    };
-
-    for (let i = 0; i < GALAXY_COUNT; i++) {
-      const target = makeTarget(GALAXY_BAKE_RES);
-      const mat = makeQuadMaterial(target.texture);
-      const mesh = new THREE.Mesh(planeGeo, mat);
-      mesh.renderOrder = -1;
-      mesh.frustumCulled = false;
-      scene.add(mesh);
-      const g: Galaxy = { x: 0, y: 0, z: FAR, size: 300, spin: 0, bright: 0.8, type: 0, mesh, mat, target };
-      galaxies.push(g);
-      // Stagger through the cycle so one drifts past only occasionally.
-      regenGalaxy(g, FAR + Math.random() * (NEAR - FAR));
-    }
-
-    const writeGalaxyPositions = () => {
-      for (const g of galaxies) {
-        g.mesh.position.set(g.x, g.y, g.z);
-        const op = g.bright * fadeAt(g.z);
-        g.mat.uniforms.uOpacity.value = op;
-        g.mesh.visible = op > 0.003;
-      }
-    };
-    writeGalaxyPositions();
 
     // ---------------------------------------------------------------------
     // Shooting stars: a small pool of head+tail meteors on random timers
@@ -477,13 +288,36 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
 
       nebulae.advance(step, fadeAt);
 
-      // Galaxies drift by slower (parallax says "much farther away").
-      for (const g of galaxies) {
-        g.z += step * GALAXY_SPEED;
-        g.mesh.rotation.z += g.spin * dt;
-        if (g.z - g.size * 0.5 > NEAR) regenGalaxy(g, FAR);
+      // Hero galaxy: drifts by slower than the field (parallax says "much
+      // farther away"), fades in/out with the same envelope as everything
+      // else, and retires once past the camera.
+      if (hero) {
+        heroZ += step * GALAXY_SPEED;
+        hero.group.position.z = heroZ;
+        hero.setOpacity(fadeAt(heroZ));
+        hero.advance(clock.elapsedTime);
+        if (heroZ - HERO_SIZE * 0.5 > NEAR) {
+          scene.remove(hero.group);
+          hero.dispose();
+          hero = null;
+          heroTimer = HERO_MIN_GAP + ctx.rng() * HERO_RAND_GAP;
+        }
+      } else if (heroBuild) {
+        // Chunked build in progress — do a small time-boxed slice of it this
+        // frame. Nothing is visible until this resolves and the group is
+        // actually added below, so a build spanning many frames is invisible.
+        const built = heroBuild.step(HERO_BUILD_BUDGET_MS);
+        if (built) {
+          heroBuild = null;
+          hero = built;
+          hero.group.position.set(heroX, heroY, heroZ);
+          hero.setOpacity(fadeAt(heroZ));
+          scene.add(hero.group);
+        }
+      } else {
+        heroTimer -= dt;
+        if (heroTimer <= 0) spawnHero();
       }
-      writeGalaxyPositions();
 
       // Shooting stars (not during warp — streaks own that moment).
       meteors.update(dt, warpEased);
@@ -527,9 +361,10 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     };
     const onContextRestored = () => {
       contextLost = false;
-      // Rebake every nebula/galaxy — RT contents don't survive context loss.
+      // Rebake every nebula — RT contents don't survive context loss. The hero
+      // galaxy is plain BufferGeometry/ShaderMaterial (no render-target bake),
+      // so three.js's own context-restore re-upload is all it needs.
       nebulae.rebake();
-      for (const g of galaxies) bakeGalaxy(g);
       if (prefersReducedMotion) {
         camera.lookAt(0, 0, -600);
         renderer.render(scene, camera);
@@ -553,12 +388,11 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       field.dispose();
       nebulae.dispose();
       meteors.dispose();
-      planeGeo.dispose();
-      for (const g of galaxies) {
-        g.mat.dispose();
-        g.target.dispose();
+      if (hero) {
+        hero.dispose();
+        hero = null;
       }
-      galaxyBakeMat.dispose();
+      heroBuild = null;
       disposeBakeRig();
       renderer.dispose();
       renderer.forceContextLoss();
