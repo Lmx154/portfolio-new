@@ -227,7 +227,12 @@ describe('buildHiiPoints', () => {
       return Math.max(...bins) / Math.max(1, Math.min(...bins));
     };
 
-    expect(contrast(hii)).toBeGreaterThan(contrast(disk));
+    // Ratio, not a bare ">", and calibrated by mutation test. Dropping the
+    // Kennicutt-Schmidt exponent (KS_INDEX 1.4 -> 1.0) still leaves HII more
+    // clustered than the disk (5.048 vs 3.549), so `hii > disk` passes for the
+    // broken build too. Measured ratios: correct 2.777, no-exponent mutant
+    // 1.422. A bar of 2.0 separates them with ~39% margin above and ~29% below.
+    expect(contrast(hii) / contrast(disk)).toBeGreaterThan(2.0);
   });
 
   it('is pink-dominated (red channel exceeds green)', () => {
@@ -244,6 +249,13 @@ describe('buildHiiPoints', () => {
   it('returns an empty set when the preset has no star formation', () => {
     const geo = buildHiiPoints(makeRng(14), instanceOf('E', 14), 2000, 10);
     expect(geo.count).toBe(0);
+  });
+
+  it('produces no NaN coordinates', () => {
+    const geo = buildHiiPoints(makeRng(31), instanceOf('Sc', 31), 2000, 10);
+    for (let i = 0; i < geo.positions.length; i++) {
+      expect(Number.isFinite(geo.positions[i])).toBe(true);
+    }
   });
 });
 
@@ -262,5 +274,12 @@ describe('buildBarPoints', () => {
   it('returns an empty set for unbarred presets', () => {
     const geo = buildBarPoints(makeRng(16), instanceOf('Sb', 16), 5000, 10);
     expect(geo.count).toBe(0);
+  });
+
+  it('produces no NaN coordinates', () => {
+    const geo = buildBarPoints(makeRng(32), instanceOf('SBb', 32), 5000, 10);
+    for (let i = 0; i < geo.positions.length; i++) {
+      expect(Number.isFinite(geo.positions[i])).toBe(true);
+    }
   });
 });
