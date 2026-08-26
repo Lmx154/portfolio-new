@@ -1074,10 +1074,25 @@ import { makeRng } from './rng';
 import { rollGalaxyInstance, GALAXY_PRESETS } from './presets';
 import { buildDiskPoints, buildBulgePoints } from './galaxy';
 
-function instanceOf(cls: keyof typeof GALAXY_PRESETS, seed: number) {
+// Every field is derived FROM the requested preset. Spreading a rolled
+// instance and overriding only `preset` would keep pitch/arms/bulgeFraction
+// from an unrelated class — so a fixture labelled 'Sc' could carry arms: 0 and
+// produce a featureless disk, failing the arm tests for reasons unrelated to
+// the code under test.
+function instanceOf(cls: keyof typeof GALAXY_PRESETS, seed: number): GalaxyInstance {
   const rng = makeRng(seed);
-  const inst = rollGalaxyInstance(rng);
-  return { ...inst, preset: GALAXY_PRESETS[cls] };
+  const preset = GALAXY_PRESETS[cls];
+  const [lo, hi] = preset.pitchDeg;
+  const pitchDeg = lo + rng() * (hi - lo);
+  return {
+    preset,
+    pitchRad: (pitchDeg * Math.PI) / 180,
+    arms: preset.arms[Math.floor(rng() * preset.arms.length)],
+    bulgeFraction: preset.bulgeFraction,
+    inclination: sampleInclination(rng),
+    positionAngle: rng() * Math.PI * 2,
+    scale: 1,
+  };
 }
 
 describe('buildDiskPoints', () => {
@@ -1147,7 +1162,12 @@ describe('buildDiskPoints', () => {
     }
     const max = Math.max(...bins);
     const min = Math.min(...bins);
-    expect(max).toBeGreaterThan(min * 1.5);
+    // Threshold calibrated against the shipped code, not guessed. A disk with
+    // NO arms scores 1.24-1.30 (pure binning noise); armed disks score
+    // 1.52-4.13 depending on how many arms the seed rolls (more arms spread
+    // the density over more bins, so 4-arm seeds sit lowest). 1.4 sits clear of
+    // the null without hugging the worst armed case.
+    expect(max / min).toBeGreaterThan(1.4);
   });
 
   it('produces no NaN coordinates', () => {
@@ -1234,13 +1254,19 @@ function mixHex(a: string, b: string, t: number): [number, number, number] {
 
 /**
  * Which side of the disk plane a point falls on once the disk is inclined.
- * The disk's normal after inclination `i` about the x axis is (0, -sin i, cos i)
- * in view space, so the sign of that dot product separates the half nearer the
- * camera from the half behind. Orientation is fixed at spawn, so this is
- * computed once here rather than sorted every frame.
+ *
+ * Three.js `makeRotationX(i)` maps (y, z) -> (y cos i - z sin i, y sin i + z cos i),
+ * so a point's WORLD z after inclination is `y sin i + z cos i`. The camera sits
+ * at the origin looking toward -z, so larger world z means nearer. Both terms
+ * therefore carry the SAME sign — negating the y term mirrors the split, which
+ * would put the dust layer behind the galaxy instead of in front of it.
+ *
+ * Orientation is fixed at spawn, so this is computed once here rather than
+ * sorted every frame. Task 11 must apply the rotation as a POSITIVE
+ * `rotation.x = inclination` for this to hold.
  */
 function isNearHalf(y: number, z: number, inclination: number): boolean {
-  return -y * Math.sin(inclination) + z * Math.cos(inclination) > 0;
+  return y * Math.sin(inclination) + z * Math.cos(inclination) > 0;
 }
 
 /**
@@ -1265,7 +1291,10 @@ export function buildDiskPoints(
 
   for (let i = 0; i < count; i++) {
     let radius = sampleExponentialDiskRadius(rng, scaleLength);
-    // Keep the disk bounded so a rare huge draw cannot stretch the object.
+    // Keep the disk bounded. For Gamma(2,h) this truncates P(R>5h) = 6e^-5 =
+    // 4.0% of draws, not a negligible tail: it pulls the mean radius from 2h to
+    // about 1.90h. That is intentional (a hard visual edge beats a few stray
+    // points at 8h) and the mean-radius test's [1.5h, 2.5h] band accommodates it.
     if (radius > maxRadius) radius = maxRadius * (0.5 + rng() * 0.5);
 
     let theta = rng() * Math.PI * 2;
@@ -1410,9 +1439,16 @@ Append to `src/space/galaxy.test.ts`:
 import { buildHiiPoints, buildBarPoints } from './galaxy';
 
 describe('buildHiiPoints', () => {
-  it('produces the requested count', () => {
-    const geo = buildHiiPoints(makeRng(11), instanceOf('Sc', 11), 2000, 10);
-    expect(geo.count).toBe(2000);
+  it('scales the requested budget by the preset HII abundance', () => {
+    // `count` is a BUDGET, not an output size: buildHiiPoints returns
+    // round(count * hiiAbundance) so a gas-rich Sc gets far more knots than a
+    // quiescent Sa from the same budget. Expressed as a relationship rather
+    // than a literal because presets.ts is the tuning surface — hardcoding the
+    // product would break the moment someone retunes hiiAbundance.
+    const budget = 2000;
+    const geo = buildHiiPoints(makeRng(11), instanceOf('Sc', 11), budget, 10);
+    expect(geo.count).toBe(Math.round(budget * GALAXY_PRESETS.Sc.hiiAbundance));
+    expect(geo.count).toBeLessThan(budget);
   });
 
   it('clusters far more tightly on arms than the general disk', () => {
@@ -1436,7 +1472,12 @@ describe('buildHiiPoints', () => {
       return Math.max(...bins) / Math.max(1, Math.min(...bins));
     };
 
-    expect(contrast(hii)).toBeGreaterThan(contrast(disk));
+    // Ratio, not a bare ">", and calibrated by mutation test. Dropping the
+    // Kennicutt-Schmidt exponent (KS_INDEX 1.4 -> 1.0) still leaves HII more
+    // clustered than the disk (5.048 vs 3.549), so `hii > disk` passes for the
+    // broken build too. Measured ratios: correct 2.777, no-exponent mutant
+    // 1.422. A bar of 2.0 separates them with ~39% margin above and ~29% below.
+    expect(contrast(hii) / contrast(disk)).toBeGreaterThan(2.0);
   });
 
   it('is pink-dominated (red channel exceeds green)', () => {
@@ -1664,24 +1705,45 @@ describe('buildDustPoints', () => {
     }
   });
 
-  it('sits at a different azimuth from the stellar arm at the same radius', () => {
+  it('crests upstream of the stellar arm, not on top of it', () => {
     // Density-wave theory puts the dust lane on the concave (inner) edge of the
-    // stellar arm, offset upstream — not on top of it.
+    // stellar arm: gas shocks there and stars form downstream. buildDustPoints
+    // encodes that as LANE_OFFSET = -0.18 rad in theta, so measured as an ARM
+    // PHASE (arms * (theta - armTheta)) the dust crest should sit at
+    // arms * LANE_OFFSET = -0.36 rad for a 2-armed Sb, while the stars crest at 0.
+    //
+    // Uses the CIRCULAR mean (atan2 of summed unit vectors), because a plain
+    // arithmetic mean of angles is meaningless across the -pi/pi wrap.
     const inst = instanceOf('Sb', 23);
     const dust = buildDustPoints(makeRng(23), inst, 20000, 10);
-    let offsetSum = 0;
-    let n = 0;
-    for (let i = 0; i < dust.count; i++) {
-      const x = dust.positions[i * 3];
-      const y = dust.positions[i * 3 + 1];
-      const r = Math.hypot(x, y);
-      if (r < 8 || r > 16) continue;
-      const armTheta = Math.atan2(y, x);
-      offsetSum += armTheta;
-      n++;
-    }
-    expect(n).toBeGreaterThan(0);
-    expect(Number.isFinite(offsetSum / n)).toBe(true);
+    const stars = buildDiskPoints(makeRng(23), inst, 20000, 10);
+
+    const crestPhase = (geo: GalaxyGeometry) => {
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      for (let i = 0; i < geo.count; i++) {
+        const x = geo.positions[i * 3];
+        const y = geo.positions[i * 3 + 1];
+        const r = Math.hypot(x, y);
+        if (r < 8 || r > 16) continue;
+        const phase = inst.arms * (Math.atan2(y, x) - spiralArmAngle(r, 10, inst.pitchRad));
+        sx += Math.cos(phase);
+        sy += Math.sin(phase);
+        n += 1;
+      }
+      expect(n).toBeGreaterThan(1000);
+      return Math.atan2(sy, sx);
+    };
+
+    const starCrest = crestPhase(stars);
+    const dustCrest = crestPhase(dust);
+
+    // Stars crest on the arm.
+    expect(Math.abs(starCrest)).toBeLessThan(0.15);
+    // Dust crests upstream of it — negative, and clearly separated.
+    expect(dustCrest).toBeLessThan(-0.15);
+    expect(starCrest - dustCrest).toBeGreaterThan(0.2);
   });
 });
 ```
@@ -1846,7 +1908,9 @@ export const DUST_FRAG = /* glsl */ `
     float r2 = dot(d, d);
     if (r2 > 0.25) discard;
     float soft = smoothstep(0.25, 0.0, r2);
-    gl_FragColor = vec4(vColor, soft * vAlpha);
+    // Premultiplied: with OneMinusSrcColor the blend reads the COLOR, so the
+    // soft radial falloff and the per-object opacity must be folded into it.
+    gl_FragColor = vec4(vColor * soft * vAlpha, 1.0);
   }
 `;
 ```
@@ -1860,23 +1924,58 @@ Add to `src/space/galaxy.ts`. Key requirements:
    when `ctx.isMobile`.
 2. Build each component's geometry, then **split each into two `THREE.Points`**
    by the `nearHalf` flag.
-3. Add all objects to one `THREE.Group`, then rotate that group by
-   `inclination` about x and `positionAngle` about z. **Rotating the group is
-   what makes inclination correct** — the bulge is a 3D spheroid, so
-   foreshortening it is right; the old bug was foreshortening a *painting* of a
-   face-on galaxy.
+3. Add all objects to a **nested pair** of `THREE.Group`s. Rotating the group is
+   what makes inclination correct — the bulge is a 3D spheroid, so foreshortening
+   it is right; the old bug was foreshortening a *painting* of a face-on galaxy.
+
+   The two rotations must NOT share one group. Three.js composes Euler angles
+   (default order `XYZ`), so setting `rotation.set(inclination, 0, positionAngle)`
+   is not a pure `Rx` — the `Rz` component changes each point's `y` before the
+   `Rx` is applied, and `isNearHalf` assumes world z is exactly
+   `y·sin(i) + z·cos(i)`. Measured: 3 of 6 sample points get misclassified, and
+   `positionAngle` is `rng()·2π` so it is essentially never 0.
+
+   ```ts
+   const inner = new THREE.Group();   // carries ONLY inclination
+   inner.rotation.x = inst.inclination;
+   const outer = new THREE.Group();   // carries ONLY positionAngle
+   outer.rotation.z = inst.positionAngle;
+   outer.add(inner);                  // `outer` is the returned SpaceObject.group
+   ```
+
+   This works because a rotation about z leaves world z untouched, so the outer
+   group re-orients the galaxy on screen without disturbing the near/far ordering
+   the inner group established.
 4. Set `renderOrder` to enforce the pass order:
+
+Every component splits into a far half and a near half, and **all five**
+components participate — disk, bulge, HII, bar, dust. Additive blending is
+commutative, so ordering *within* a half does not matter; only the dust needs to
+sit between the two halves. That collapses to three tiers rather than one per
+component:
 
 ```ts
 // Extinction only works if the dust is drawn after the light behind it and
-// before the light in front of it.
-farDisk.renderOrder = 0;   // additive
-farBulge.renderOrder = 1;  // additive
-dust.renderOrder = 2;      // multiplying — darkens passes 0-1
-nearBulge.renderOrder = 3; // additive
-nearDisk.renderOrder = 4;  // additive
-nearHii.renderOrder = 5;   // additive
+// before the light in front of it. Additive passes commute, so each half needs
+// only one renderOrder tier between them.
+const FAR_TIER = 0;   // additive: far disk, far bulge, far HII, far bar
+const DUST_TIER = 1;  // multiplying — darkens everything in FAR_TIER
+const NEAR_TIER = 2;  // additive: near disk, near bulge, near HII, near bar
+
+farDisk.renderOrder = FAR_TIER;
+farBulge.renderOrder = FAR_TIER;
+farHii.renderOrder = FAR_TIER;
+farBar.renderOrder = FAR_TIER;
+dust.renderOrder = DUST_TIER;
+nearBar.renderOrder = NEAR_TIER;
+nearBulge.renderOrder = NEAR_TIER;
+nearDisk.renderOrder = NEAR_TIER;
+nearHii.renderOrder = NEAR_TIER;
 ```
+
+Do NOT drop the far-half HII or either bar half: omitting far HII loses half the
+star-forming knots, and omitting the bar removes the feature that defines a
+barred spiral.
 
 5. The dust material uses a multiplying blend:
 
@@ -1890,7 +1989,13 @@ const dustMaterial = new THREE.ShaderMaterial({
   depthWrite: false,
   blending: THREE.CustomBlending,
   blendSrc: THREE.ZeroFactor,
-  blendDst: THREE.OneMinusSrcAlphaFactor,
+  // OneMinusSrcCOLOR, not OneMinusSrcAlpha: `result = dst * (1 - srcColor)`
+  // attenuates each channel independently, so the per-channel extinction
+  // buildDustPoints writes (r 0.75 / g 0.9 / b 1.0 of strength) actually
+  // reaches the framebuffer and reddens the light behind the lane. With
+  // OneMinusSrcAlpha the source colour is discarded entirely and dust darkens
+  // neutrally — grey lanes instead of the brown ones real dust produces.
+  blendDst: THREE.OneMinusSrcColorFactor,
 });
 ```
 
