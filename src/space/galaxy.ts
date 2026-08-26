@@ -30,13 +30,19 @@ function mixHex(a: string, b: string, t: number): [number, number, number] {
 
 /**
  * Which side of the disk plane a point falls on once the disk is inclined.
- * The disk's normal after inclination `i` about the x axis is (0, -sin i, cos i)
- * in view space, so the sign of that dot product separates the half nearer the
- * camera from the half behind. Orientation is fixed at spawn, so this is
- * computed once here rather than sorted every frame.
+ *
+ * Three.js `makeRotationX(i)` maps (y, z) -> (y cos i - z sin i, y sin i + z cos i),
+ * so a point's WORLD z after inclination is `y sin i + z cos i`. The camera sits
+ * at the origin looking toward -z, so larger world z means nearer. Both terms
+ * therefore carry the SAME sign — negating the y term mirrors the split, which
+ * would put the dust layer behind the galaxy instead of in front of it.
+ *
+ * Orientation is fixed at spawn, so this is computed once here rather than
+ * sorted every frame. Task 11 must apply the rotation as a POSITIVE
+ * `rotation.x = inclination` for this to hold.
  */
 function isNearHalf(y: number, z: number, inclination: number): boolean {
-  return -y * Math.sin(inclination) + z * Math.cos(inclination) > 0;
+  return y * Math.sin(inclination) + z * Math.cos(inclination) > 0;
 }
 
 /**
@@ -61,7 +67,10 @@ export function buildDiskPoints(
 
   for (let i = 0; i < count; i++) {
     let radius = sampleExponentialDiskRadius(rng, scaleLength);
-    // Keep the disk bounded so a rare huge draw cannot stretch the object.
+    // Keep the disk bounded. For Gamma(2,h) this truncates P(R>5h) = 6e^-5 =
+    // 4.0% of draws, not a negligible tail: it pulls the mean radius from 2h to
+    // about 1.90h. That is intentional (a hard visual edge beats a few stray
+    // points at 8h) and the mean-radius test's [1.5h, 2.5h] band accommodates it.
     if (radius > maxRadius) radius = maxRadius * (0.5 + rng() * 0.5);
 
     let theta = rng() * Math.PI * 2;

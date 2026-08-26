@@ -65,6 +65,25 @@ describe('buildDiskPoints', () => {
     expect(near).toBeLessThan(geo.count);
   });
 
+  it('puts the +y edge on the near side of an inclined disk', () => {
+    // Direction test, not just a split test. Three.js R_x(i) sends (y=1, z=0)
+    // to world z = +sin(i), and the camera looks toward -z, so the +y edge must
+    // come out NEAR. A mirrored sign convention still produces two non-empty
+    // halves, so only an assertion about WHICH half catches it — and getting it
+    // backwards would render dust lanes on the far side of the galaxy.
+    const inst = { ...instanceOf('Sb', 3), inclination: Math.PI / 2 };
+    const geo = buildDiskPoints(makeRng(3), inst, 20000, 10);
+    let nearPosY = 0;
+    let nearNegY = 0;
+    for (let i = 0; i < geo.count; i++) {
+      if (!geo.nearHalf[i]) continue;
+      if (geo.positions[i * 3 + 1] > 0) nearPosY++;
+      else nearNegY++;
+    }
+    // Edge-on, the near half should be almost entirely the +y side.
+    expect(nearPosY).toBeGreaterThan(nearNegY * 10);
+  });
+
   it('is reproducible for a given seed', () => {
     const a = buildDiskPoints(makeRng(9), instanceOf('Sb', 9), 1000, 10);
     const b = buildDiskPoints(makeRng(9), instanceOf('Sb', 9), 1000, 10);
