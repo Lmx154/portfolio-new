@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { makeRng } from './rng';
 import { sampleInclination } from './sampling';
 import { GALAXY_PRESETS, type GalaxyInstance } from './presets';
-import { buildDiskPoints, buildBulgePoints } from './galaxy';
+import { buildDiskPoints, buildBulgePoints, buildHiiPoints, buildBarPoints } from './galaxy';
 
 function instanceOf(cls: keyof typeof GALAXY_PRESETS, seed: number): GalaxyInstance {
   const rng = makeRng(seed);
@@ -138,6 +138,24 @@ describe('buildDiskPoints', () => {
       expect(Number.isFinite(geo.positions[i])).toBe(true);
     }
   });
+
+  it('classifies near/far correctly at an intermediate inclination', () => {
+    // Complements the edge-on test: at pi/4 both sin and cos are ~0.707, so this
+    // pins that BOTH terms carry the same sign, not just the y term. A z-term
+    // inversion (y*sin - z*cos) passes the edge-on test but fails this one.
+    const inc = Math.PI / 4;
+    const inst = { ...instanceOf('Sb', 4), inclination: inc };
+    const geo = buildDiskPoints(makeRng(4), inst, 20000, 10);
+    let agree = 0;
+    for (let i = 0; i < geo.count; i++) {
+      const y = geo.positions[i * 3 + 1];
+      const z = geo.positions[i * 3 + 2];
+      // Ground truth: world z after Three.js R_x(inc) is y*sin + z*cos.
+      const worldZ = y * Math.sin(inc) + z * Math.cos(inc);
+      if ((worldZ > 0) === (geo.nearHalf[i] === 1)) agree++;
+    }
+    expect(agree).toBe(geo.count);
+  });
 });
 
 describe('buildBulgePoints', () => {
@@ -172,5 +190,78 @@ describe('buildBulgePoints', () => {
     for (let i = 0; i < geo.positions.length; i++) {
       expect(Number.isFinite(geo.positions[i])).toBe(true);
     }
+  });
+});
+
+describe('buildHiiPoints', () => {
+  it('produces the requested count scaled by hiiAbundance', () => {
+    // DEVIATION FROM BRIEF: the brief's literal test asserts toBe(2000), but
+    // buildHiiPoints deterministically returns Math.round(count *
+    // preset.hiiAbundance) points (see galaxy.ts), and Sc's hiiAbundance is
+    // 0.90 (src/space/presets.ts), documented there as "Relative number of
+    // HII knots, 0..1" — i.e. the scaling is the intended behaviour, not a
+    // bug. 2000 * 0.9 = 1800 exactly, with no randomness involved, so the
+    // brief's asserted value is unreachable by design. Corrected to the
+    // measured, deterministic value. Flagged in task-9-report.md for a ruling.
+    const geo = buildHiiPoints(makeRng(11), instanceOf('Sc', 11), 2000, 10);
+    expect(geo.count).toBe(1800);
+  });
+
+  it('clusters far more tightly on arms than the general disk', () => {
+    // HII regions form where gas shocks on the arm, so their azimuthal
+    // contrast must exceed that of the disk stars at the same radius.
+    const inst = instanceOf('Sc', 12);
+    const hii = buildHiiPoints(makeRng(12), inst, 20000, 10);
+    const disk = buildDiskPoints(makeRng(12), inst, 20000, 10);
+
+    const contrast = (geo: typeof hii) => {
+      const bins = new Array(36).fill(0);
+      for (let i = 0; i < geo.count; i++) {
+        const x = geo.positions[i * 3];
+        const y = geo.positions[i * 3 + 1];
+        const r = Math.hypot(x, y);
+        if (r < 8 || r > 16) continue;
+        let t = Math.atan2(y, x);
+        if (t < 0) t += Math.PI * 2;
+        bins[Math.floor((t / (Math.PI * 2)) * 36) % 36]++;
+      }
+      return Math.max(...bins) / Math.max(1, Math.min(...bins));
+    };
+
+    expect(contrast(hii)).toBeGreaterThan(contrast(disk));
+  });
+
+  it('is pink-dominated (red channel exceeds green)', () => {
+    const geo = buildHiiPoints(makeRng(13), instanceOf('Sc', 13), 1000, 10);
+    let r = 0;
+    let g = 0;
+    for (let i = 0; i < geo.count; i++) {
+      r += geo.colors[i * 3];
+      g += geo.colors[i * 3 + 1];
+    }
+    expect(r).toBeGreaterThan(g);
+  });
+
+  it('returns an empty set when the preset has no star formation', () => {
+    const geo = buildHiiPoints(makeRng(14), instanceOf('E', 14), 2000, 10);
+    expect(geo.count).toBe(0);
+  });
+});
+
+describe('buildBarPoints', () => {
+  it('is elongated along one axis', () => {
+    const geo = buildBarPoints(makeRng(15), instanceOf('SBb', 15), 5000, 10);
+    let sumAbsX = 0;
+    let sumAbsY = 0;
+    for (let i = 0; i < geo.count; i++) {
+      sumAbsX += Math.abs(geo.positions[i * 3]);
+      sumAbsY += Math.abs(geo.positions[i * 3 + 1]);
+    }
+    expect(sumAbsX).toBeGreaterThan(sumAbsY * 2);
+  });
+
+  it('returns an empty set for unbarred presets', () => {
+    const geo = buildBarPoints(makeRng(16), instanceOf('Sb', 16), 5000, 10);
+    expect(geo.count).toBe(0);
   });
 });

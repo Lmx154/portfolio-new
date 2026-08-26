@@ -166,3 +166,123 @@ export function buildBulgePoints(
 
   return { positions, colors, sizes, nearHalf, count };
 }
+
+const EMPTY_GEOMETRY: GalaxyGeometry = {
+  positions: new Float32Array(0),
+  colors: new Float32Array(0),
+  sizes: new Float32Array(0),
+  nearHalf: new Uint8Array(0),
+  count: 0,
+};
+
+/**
+ * HII regions: the pink Hα knots strung along spiral arms.
+ *
+ * Star formation follows Kennicutt-Schmidt, Sigma_SFR ∝ Sigma_gas^1.4, and gas
+ * piles up on the arm. Raising the arm response to that power is what makes
+ * these cluster far more tightly than the disk stars do — beads on a string
+ * rather than a smooth haze.
+ */
+export function buildHiiPoints(
+  rng: () => number,
+  inst: GalaxyInstance,
+  count: number,
+  scaleLength: number,
+): GalaxyGeometry {
+  if (inst.preset.hiiAbundance <= 0 || inst.arms <= 0) return EMPTY_GEOMETRY;
+
+  const n = Math.round(count * inst.preset.hiiAbundance);
+  if (n <= 0) return EMPTY_GEOMETRY;
+
+  const positions = new Float32Array(n * 3);
+  const colors = new Float32Array(n * 3);
+  const sizes = new Float32Array(n);
+  const nearHalf = new Uint8Array(n);
+
+  const z0 = scaleLength * inst.preset.heightRatio * 0.6;
+  const maxRadius = scaleLength * 5;
+  const KS_INDEX = 1.4;
+
+  for (let i = 0; i < n; i++) {
+    // Star formation is suppressed in the very centre and dies off outward.
+    let radius = scaleLength * (0.6 + rng() * 3.4);
+    if (radius > maxRadius) radius = maxRadius;
+
+    const armTheta = spiralArmAngle(radius, scaleLength, inst.pitchRad);
+    let theta = rng() * Math.PI * 2;
+    for (let tries = 0; tries < 16; tries++) {
+      const candidate = rng() * Math.PI * 2;
+      const phase = inst.arms * (candidate - armTheta);
+      const armResponse = (1 + Math.cos(phase)) / 2;
+      if (rng() < Math.pow(armResponse, KS_INDEX)) {
+        theta = candidate;
+        break;
+      }
+    }
+    theta += (rng() - 0.5) * 0.06 * Math.PI;
+
+    const x = radius * Math.cos(theta);
+    const y = radius * Math.sin(theta);
+    const z = sampleSech2Height(rng, z0);
+
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
+    nearHalf[i] = isNearHalf(y, z, inst.inclination) ? 1 : 0;
+
+    // Hα pink, with hot blue OB associations mixed in alongside.
+    const blue = rng() < 0.35;
+    const [r, g, b] = blue ? mixHex('#a8c8ff', '#ff6a90', 0.2) : mixHex('#ff5a7a', '#ffc0d0', rng() * 0.5);
+    colors[i * 3] = r;
+    colors[i * 3 + 1] = g;
+    colors[i * 3 + 2] = b;
+
+    sizes[i] = 1.4 + rng() * 2.6;
+  }
+
+  return { positions, colors, sizes, nearHalf, count: n };
+}
+
+/**
+ * The stellar bar of an SB galaxy: a prolate concentration through the centre.
+ * Arms start at the bar tips, which the disk builder already honours because
+ * both use the same spiral phase reference.
+ */
+export function buildBarPoints(
+  rng: () => number,
+  inst: GalaxyInstance,
+  count: number,
+  scaleLength: number,
+): GalaxyGeometry {
+  if (!inst.preset.barred) return EMPTY_GEOMETRY;
+
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  const nearHalf = new Uint8Array(count);
+
+  const halfLength = scaleLength * 1.6;
+  const halfWidth = halfLength * 0.22;
+  const z0 = scaleLength * inst.preset.heightRatio;
+
+  for (let i = 0; i < count; i++) {
+    // Gaussian along the bar, tighter Gaussian across it.
+    const along = (rng() + rng() + rng() + rng() - 2) * halfLength * 0.6;
+    const across = (rng() + rng() + rng() + rng() - 2) * halfWidth * 0.6;
+    const z = sampleSech2Height(rng, z0);
+
+    positions[i * 3] = along;
+    positions[i * 3 + 1] = across;
+    positions[i * 3 + 2] = z;
+    nearHalf[i] = isNearHalf(across, z, inst.inclination) ? 1 : 0;
+
+    const [r, g, b] = mixHex(inst.preset.coreColor, '#ffcf95', rng());
+    colors[i * 3] = r;
+    colors[i * 3 + 1] = g;
+    colors[i * 3 + 2] = b;
+
+    sizes[i] = samplePowerLawBrightness(rng, 0.5, 2.4, -2.35);
+  }
+
+  return { positions, colors, sizes, nearHalf, count };
+}
