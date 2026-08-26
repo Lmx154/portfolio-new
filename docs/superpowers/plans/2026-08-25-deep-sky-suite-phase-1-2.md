@@ -1472,7 +1472,12 @@ describe('buildHiiPoints', () => {
       return Math.max(...bins) / Math.max(1, Math.min(...bins));
     };
 
-    expect(contrast(hii)).toBeGreaterThan(contrast(disk));
+    // Ratio, not a bare ">", and calibrated by mutation test. Dropping the
+    // Kennicutt-Schmidt exponent (KS_INDEX 1.4 -> 1.0) still leaves HII more
+    // clustered than the disk (5.048 vs 3.549), so `hii > disk` passes for the
+    // broken build too. Measured ratios: correct 2.777, no-exponent mutant
+    // 1.422. A bar of 2.0 separates them with ~39% margin above and ~29% below.
+    expect(contrast(hii) / contrast(disk)).toBeGreaterThan(2.0);
   });
 
   it('is pink-dominated (red channel exceeds green)', () => {
