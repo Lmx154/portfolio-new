@@ -163,6 +163,7 @@ export const STAR_VERT = /* glsl */ `
   uniform float uFadeOut;
   uniform float uWarpFade;
   uniform float uTime;
+  uniform float uOpacity;
   void main() {
     vColor = aColor;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
@@ -178,6 +179,7 @@ export const STAR_VERT = /* glsl */ `
     float ph = fract(aSize * 43.7585 + position.x * 0.0113 + position.y * 0.0177) * 6.2831;
     float tw = 0.82 + 0.18 * sin(uTime * (1.0 + fract(aSize * 17.31) * 3.0) + ph);
     vAlpha = fade * (0.15 + 0.85 * small) * uWarpFade * tw;
+    vAlpha *= uOpacity;
     gl_PointSize = sizeCss * uPixelRatio;
   }
 `;
@@ -191,6 +193,25 @@ export const STAR_FRAG = /* glsl */ `
     if (d > 0.5) discard;
     float core = 1.0 - smoothstep(0.0, 0.5, d);
     gl_FragColor = vec4(vColor, pow(core, 1.7) * vAlpha);
+  }
+`;
+
+/**
+ * Dust points. Alpha carries extinction strength; the material multiplies the
+ * framebuffer down rather than adding to it, so the lane silhouettes whatever
+ * was drawn before it. Shares STAR_VERT, which declares `vAlpha` (not
+ * `vFade`) — the varying names here must match or the program fails to link.
+ */
+export const DUST_FRAG = /* glsl */ `
+  precision mediump float;
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    vec2 d = gl_PointCoord - vec2(0.5);
+    float r2 = dot(d, d);
+    if (r2 > 0.25) discard;
+    float soft = smoothstep(0.25, 0.0, r2);
+    gl_FragColor = vec4(vColor, soft * vAlpha);
   }
 `;
 
@@ -258,6 +279,7 @@ export function makeStarMaterial(opts: {
       uFadeOut: { value: opts.fadeOut },
       uWarpFade: { value: 1 },
       uTime: { value: 0 },
+      uOpacity: { value: 1 },
     },
     vertexShader: STAR_VERT,
     fragmentShader: STAR_FRAG,

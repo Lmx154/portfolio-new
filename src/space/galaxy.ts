@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import type { GalaxyInstance } from './presets';
 import {
   sampleExponentialDiskRadius,
@@ -6,6 +7,8 @@ import {
   samplePowerLawBrightness,
   spiralArmAngle,
 } from './sampling';
+import { STAR_VERT, DUST_FRAG, makeStarMaterial } from './shaders';
+import type { SpaceCtx, SpaceObject } from './types';
 
 export type GalaxyGeometry = {
   positions: Float32Array;
@@ -359,4 +362,232 @@ export function buildDustPoints(
   }
 
   return { positions, colors, sizes, nearHalf, count };
+}
+
+// -----------------------------------------------------------------------
+// Assembly: geometry -> a renderable SpaceObject
+// -----------------------------------------------------------------------
+
+/** A `GalaxyGeometry`-shaped bag of points, partitioned by `nearHalf`. */
+type PointBag = { positions: Float32Array; colors: Float32Array; sizes: Float32Array; count: number };
+
+/**
+ * Partition a `GalaxyGeometry` into its near and far halves. `GalaxyGeometry`
+ * is treated as read-only here (several builders return the shared
+ * `EMPTY_GEOMETRY` singleton by reference) — this always allocates fresh
+ * typed arrays rather than mutating the input.
+ */
+function splitByNearHalf(geo: GalaxyGeometry): { near: PointBag; far: PointBag } {
+  let nearCount = 0;
+  for (let i = 0; i < geo.count; i++) if (geo.nearHalf[i]) nearCount++;
+  const farCount = geo.count - nearCount;
+
+  const near: PointBag = {
+    positions: new Float32Array(nearCount * 3),
+    colors: new Float32Array(nearCount * 3),
+    sizes: new Float32Array(nearCount),
+    count: nearCount,
+  };
+  const far: PointBag = {
+    positions: new Float32Array(farCount * 3),
+    colors: new Float32Array(farCount * 3),
+    sizes: new Float32Array(farCount),
+    count: farCount,
+  };
+
+  let ni = 0;
+  let fi = 0;
+  for (let i = 0; i < geo.count; i++) {
+    const bag = geo.nearHalf[i] ? near : far;
+    const j = geo.nearHalf[i] ? ni++ : fi++;
+    bag.positions[j * 3] = geo.positions[i * 3];
+    bag.positions[j * 3 + 1] = geo.positions[i * 3 + 1];
+    bag.positions[j * 3 + 2] = geo.positions[i * 3 + 2];
+    bag.colors[j * 3] = geo.colors[i * 3];
+    bag.colors[j * 3 + 1] = geo.colors[i * 3 + 1];
+    bag.colors[j * 3 + 2] = geo.colors[i * 3 + 2];
+    bag.sizes[j] = geo.sizes[i];
+  }
+
+  return { near, far };
+}
+
+/** Build a `THREE.Points` from a bag, or `null` for an empty one (never add a zero-count object). */
+function makePoints(bag: PointBag, material: THREE.ShaderMaterial): THREE.Points | null {
+  if (bag.count === 0) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(bag.positions, 3));
+  geometry.setAttribute('aColor', new THREE.BufferAttribute(bag.colors, 3));
+  geometry.setAttribute('aSize', new THREE.BufferAttribute(bag.sizes, 1));
+  const points = new THREE.Points(geometry, material);
+  points.frustumCulled = false;
+  return points;
+}
+
+// Extinction only works if the dust is drawn after the light behind it and
+// before the light in front of it. Additive passes commute, so each half needs
+// only one renderOrder tier between them.
+const FAR_TIER = 0; // additive: far disk, far bulge, far HII, far bar
+const DUST_TIER = 1; // multiplying — darkens everything in FAR_TIER
+const NEAR_TIER = 2; // additive: near disk, near bulge, near HII, near bar
+
+/**
+ * Assemble the five geometry builders into one renderable galaxy.
+ *
+ * Two things make the draw order correct:
+ *
+ * 1. Every star-emitting component (disk, bulge, HII, bar) splits into a far
+ *    half and a near half; the dust — which darkens whatever is already in the
+ *    framebuffer — is drawn as a single unsplit pass in between. Additive
+ *    blending commutes, so ordering *within* a half never matters.
+ * 2. Inclination and position angle are applied as TWO nested groups, not two
+ *    rotations on one group. `isNearHalf()` above bakes in the assumption that
+ *    a point's world z is exactly `y*sin(i) + z*cos(i)` — true only for a bare
+ *    `makeRotationX(i)`. Three.js composes a single object's Euler as
+ *    `Rx * Ry * Rz`, which applies the z-rotation (position angle) to the
+ *    local point *before* the x-rotation and would fold position angle into
+ *    that formula, silently invalidating every precomputed `nearHalf` flag for
+ *    almost every instance (position angle is `rng() * 2*PI`, essentially
+ *    never 0). Nesting an inner group (pure `rotation.x = inclination`,
+ *    holding the points) inside an outer group (pure `rotation.z =
+ *    positionAngle`) instead composes as `Rz * (Rx * v)`: the inner transform
+ *    alone determines world z exactly as `isNearHalf` assumes, and the outer
+ *    z-rotation — being a rotation about the axis it doesn't touch — leaves
+ *    that z untouched while still spinning the galaxy's on-sky orientation.
+ */
+export function createGalaxy(
+  ctx: SpaceCtx,
+  opts: {
+    instance: GalaxyInstance;
+    worldSize: number;
+    pointBudget: number;
+  },
+): SpaceObject {
+  const { instance: inst, worldSize } = opts;
+
+  // Fixed allocation across components, halved on mobile. buildHiiPoints
+  // further scales its own share by hiiAbundance internally, so the 4% share
+  // handed to it is a budget, not the eventual point count — do not pre-scale.
+  const budget = ctx.isMobile ? Math.floor(opts.pointBudget / 2) : opts.pointBudget;
+  const diskCount = Math.round(budget * 0.58);
+  const bulgeCount = Math.round(budget * 0.25);
+  const dustCount = Math.round(budget * 0.12);
+  const hiiCount = Math.round(budget * 0.04);
+  const barCount = Math.round(budget * 0.01);
+
+  // Disk exponential scale length as a fraction of the requested world size,
+  // jittered per-instance by `inst.scale`; the bulge's Hernquist radius is a
+  // smaller fraction of that, since real bulges are far more compact than the
+  // disk they sit inside.
+  const scaleLength = worldSize * 0.14 * inst.scale;
+  const scaleRadius = scaleLength * 0.3;
+
+  const diskGeo = buildDiskPoints(ctx.rng, inst, diskCount, scaleLength);
+  const bulgeGeo = buildBulgePoints(ctx.rng, inst, bulgeCount, scaleRadius);
+  const hiiGeo = buildHiiPoints(ctx.rng, inst, hiiCount, scaleLength);
+  const barGeo = buildBarPoints(ctx.rng, inst, barCount, scaleLength);
+  const dustGeo = buildDustPoints(ctx.rng, inst, dustCount, scaleLength);
+
+  const diskHalves = splitByNearHalf(diskGeo);
+  const bulgeHalves = splitByNearHalf(bulgeGeo);
+  const hiiHalves = splitByNearHalf(hiiGeo);
+  const barHalves = splitByNearHalf(barGeo);
+
+  // The galaxy is a static object, not a recycling conveyor like the field
+  // stars or nebula clouds — STAR_VERT's near/far depth fade exists for their
+  // "approach the camera, wrap around" motion, which the galaxy has no
+  // equivalent of. Push the thresholds well outside any point's local-space
+  // coordinate (bounded by a handful of scale lengths, i.e. a fraction of
+  // worldSize) so that fade evaluates to 1 everywhere and every point's
+  // opacity is governed purely by `uOpacity`.
+  const pixelRatio = ctx.renderer.getPixelRatio();
+  const sizeScale = worldSize * 0.5;
+  const minPx = 1.6;
+  const far = -worldSize * 4;
+  const near = worldSize * 4;
+  const fadeIn = worldSize;
+  const fadeOut = worldSize;
+
+  const starMat = makeStarMaterial({ sizeScale, pixelRatio, minPx, near, far, fadeIn, fadeOut });
+  const dustMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uSizeScale: { value: sizeScale },
+      uPixelRatio: { value: pixelRatio },
+      uMinPx: { value: minPx },
+      uNear: { value: near },
+      uFar: { value: far },
+      uFadeIn: { value: fadeIn },
+      uFadeOut: { value: fadeOut },
+      uWarpFade: { value: 1 },
+      uTime: { value: 0 },
+      uOpacity: { value: 1 },
+    },
+    vertexShader: STAR_VERT,
+    fragmentShader: DUST_FRAG,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    blending: THREE.CustomBlending,
+    blendSrc: THREE.ZeroFactor,
+    blendDst: THREE.OneMinusSrcAlphaFactor,
+  });
+
+  // `inner` carries ONLY the inclination rotation, so isNearHalf's world-z
+  // formula holds exactly (see the doc comment above). `outer` — the object
+  // returned to the caller — carries only the position-angle spin on top.
+  const inner = new THREE.Group();
+  const outer = new THREE.Group();
+  outer.add(inner);
+
+  const geometries: THREE.BufferGeometry[] = [];
+
+  const addHalf = (bag: PointBag, tier: number) => {
+    const points = makePoints(bag, starMat);
+    if (!points) return;
+    points.renderOrder = tier;
+    inner.add(points);
+    geometries.push(points.geometry);
+  };
+
+  addHalf(diskHalves.far, FAR_TIER);
+  addHalf(bulgeHalves.far, FAR_TIER);
+  addHalf(hiiHalves.far, FAR_TIER);
+  addHalf(barHalves.far, FAR_TIER);
+
+  // Dust is drawn as a single unsplit pass between the two star tiers rather
+  // than split into its own near/far halves — see the createGalaxy doc
+  // comment.
+  const dustPoints = makePoints(
+    { positions: dustGeo.positions, colors: dustGeo.colors, sizes: dustGeo.sizes, count: dustGeo.count },
+    dustMat,
+  );
+  if (dustPoints) {
+    dustPoints.renderOrder = DUST_TIER;
+    inner.add(dustPoints);
+    geometries.push(dustPoints.geometry);
+  }
+
+  addHalf(diskHalves.near, NEAR_TIER);
+  addHalf(bulgeHalves.near, NEAR_TIER);
+  addHalf(hiiHalves.near, NEAR_TIER);
+  addHalf(barHalves.near, NEAR_TIER);
+
+  // Hard contract: this MUST be a positive rotation. isNearHalf() computes
+  // world-z ordering assuming Three.js `makeRotationX(+inclination)`; negating
+  // it would silently put every dust lane on the back of the galaxy.
+  inner.rotation.x = inst.inclination;
+  outer.rotation.z = inst.positionAngle;
+
+  const setOpacity = (o: number) => {
+    starMat.uniforms.uOpacity.value = o;
+    dustMat.uniforms.uOpacity.value = o;
+  };
+
+  const dispose = () => {
+    for (const g of geometries) g.dispose();
+    starMat.dispose();
+    dustMat.dispose();
+  };
+
+  return { group: outer, setOpacity, dispose };
 }
