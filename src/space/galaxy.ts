@@ -7,7 +7,7 @@ import {
   samplePowerLawBrightness,
   spiralArmAngle,
 } from './sampling';
-import { STAR_VERT, DUST_FRAG, makeStarMaterial } from './shaders';
+import { STAR_VERT, DUST_FRAG, makeStarMaterial, makeStarUniforms } from './shaders';
 import type { SpaceCtx, SpaceObject } from './types';
 
 export type GalaxyGeometry = {
@@ -549,17 +549,7 @@ function assembleGalaxy(
 
   const starMat = makeStarMaterial({ sizeScale, pixelRatio, minPx, near, far, fadeIn, fadeOut });
   const dustMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uSizeScale: { value: sizeScale },
-      uPixelRatio: { value: pixelRatio },
-      uMinPx: { value: minPx },
-      uNear: { value: near },
-      uFar: { value: far },
-      uFadeIn: { value: fadeIn },
-      uFadeOut: { value: fadeOut },
-      uWarpFade: { value: 1 },
-      uOpacity: { value: 1 },
-    },
+    uniforms: makeStarUniforms({ sizeScale, pixelRatio, minPx, near, far, fadeIn, fadeOut, energy: 1 }),
     vertexShader: STAR_VERT,
     fragmentShader: DUST_FRAG,
     transparent: true,

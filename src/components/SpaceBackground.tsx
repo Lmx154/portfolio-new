@@ -43,7 +43,10 @@ const FADE_IN = 750;
 const FADE_OUT = 440;
 const CRUISE_SPEED = 34;
 const FIELD_SPREAD = 0.72;
-const MIN_PX = 1.8;
+const MIN_PX = 3.5; // MINIMUM SPRITE SIZE IN DEVICE PIXELS (not CSS px).
+// Below ~3px a point sprite's sampled energy swings with its sub-pixel
+// position (178% peak-to-peak at 1.8px, ~3% at 3.5px), which at cruise reads
+// as every star shimmering. See the note in STAR_VERT.
 
 // ---- Warp jump (page transition) ------------------------------------------
 // On navigation we briefly slam the cruise speed up so the field rushes past,

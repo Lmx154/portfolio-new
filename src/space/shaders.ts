@@ -163,6 +163,7 @@ export const STAR_VERT = /* glsl */ `
   uniform float uFadeOut;
   uniform float uWarpFade;
   uniform float uOpacity;
+  uniform float uEnergy;
   void main() {
     vColor = aColor;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
@@ -171,16 +172,31 @@ export const STAR_VERT = /* glsl */ `
     float fin = smoothstep(uFar, uFar + uFadeIn, z);
     float fout = 1.0 - smoothstep(uNear - uFadeOut, uNear, z);
     float fade = clamp(fin * fout, 0.0, 1.0);
-    float wantCss = aSize * uSizeScale / max(-mv.z, 1.0);
-    float small = clamp(wantCss / uMinPx, 0.0, 1.0);
-    float sizeCss = clamp(max(wantCss, uMinPx), 0.0, 18.0);
+    // Size floor is enforced in DEVICE pixels, not CSS pixels. Applying it to
+    // the CSS size and then multiplying by uPixelRatio meant a 1x display drew
+    // stars at 1.8 device px while a 2x display drew them at 3.6 — and a sprite
+    // that small aliases badly against the pixel grid.
+    //
+    // Why the floor has to be this big: a point sprite's sampled energy depends
+    // on where its centre sits between pixel centres. Measured peak-to-peak
+    // ripple as a star slides one pixel: 178% at 1.8px, 24% at 2.5px, ~3% at
+    // 3.5px. At cruise a star drifts a fraction of a pixel per frame, so that
+    // ripple becomes a visible per-star pulse — the "shimmer". It vanishes up
+    // close (the sprite is naturally large) and during a warp (motion is too
+    // fast to form a coherent pulse), which is exactly how it presents.
+    float wantDev = aSize * uSizeScale * uPixelRatio / max(-mv.z, 1.0);
+    float drawDev = clamp(max(wantDev, uMinPx), 0.0, 26.0);
+    // Dim sub-minimum stars linearly with how much they were inflated. A strict
+    // area (squared) correction is more physical but visibly thins the faint
+    // majority, and the ripple fix below does not depend on it.
+    float small = clamp(wantDev / drawDev, 0.0, 1.0);
     // No twinkle: scintillation is refraction through Earth's atmosphere, and
     // this camera is in space. Animating per-star brightness here made ~100k
     // galaxy points and the field shimmer continuously at cruise, which reads
     // as noise rather than life.
-    vAlpha = fade * (0.15 + 0.85 * small) * uWarpFade;
+    vAlpha = fade * (0.15 + 0.85 * small) * uWarpFade * uEnergy;
     vAlpha *= uOpacity;
-    gl_PointSize = sizeCss * uPixelRatio;
+    gl_PointSize = drawDev;
   }
 `;
 
@@ -191,8 +207,13 @@ export const STAR_FRAG = /* glsl */ `
   void main() {
     float d = length(gl_PointCoord - 0.5);
     if (d > 0.5) discard;
-    float core = 1.0 - smoothstep(0.0, 0.5, d);
-    gl_FragColor = vec4(vColor, pow(core, 1.7) * vAlpha);
+    // Gaussian, not a peaked power curve: a smooth, band-limited profile samples
+    // consistently regardless of where the sprite's centre falls between pixels.
+    // sigma 0.15 over a 3.5px sprite measures 3.3% ripple (vs 178% for the old
+    // 1.8px pow(core,1.7)) while keeping the visible core ~2.2px, so stars still
+    // read as points rather than blobs.
+    float core = exp(-(d * d) / (2.0 * 0.15 * 0.15));
+    gl_FragColor = vec4(vColor, core * vAlpha);
   }
 `;
 
@@ -261,6 +282,38 @@ export const STREAK_FRAG = /* glsl */ `
 // Shared by the drifting field, per-cluster points, and (in later tasks) any
 // other star-like point cloud. Takes its tunables as options instead of
 // closing over renderer/scene state, so it can live outside the hero effect.
+/**
+ * The uniform set STAR_VERT requires. Exported so every material built on that
+ * vertex shader derives its uniforms from one place — a hand-copied list silently
+ * drifts (a missing uniform reads as 0, which blanks whatever it multiplies).
+ */
+export const STAR_ENERGY = 0.4;
+
+export function makeStarUniforms(opts: {
+  sizeScale: number; pixelRatio: number; minPx: number;
+  near: number; far: number; fadeIn: number; fadeOut: number;
+  /**
+   * Brightness compensation. The anti-aliasing fix draws every star over a
+   * ~3.5px sprite instead of ~1.8px — roughly 3.8x the area — so without this
+   * the field renders about 2.5x too bright. Dust passes 1: its alpha is an
+   * extinction strength, not an emission, so dimming it would weaken the lanes.
+   */
+  energy?: number;
+}) {
+  return {
+    uSizeScale: { value: opts.sizeScale },
+    uPixelRatio: { value: opts.pixelRatio },
+    uMinPx: { value: opts.minPx },
+    uNear: { value: opts.near },
+    uFar: { value: opts.far },
+    uFadeIn: { value: opts.fadeIn },
+    uFadeOut: { value: opts.fadeOut },
+    uWarpFade: { value: 1 },
+    uOpacity: { value: 1 },
+    uEnergy: { value: opts.energy ?? STAR_ENERGY },
+  };
+}
+
 export function makeStarMaterial(opts: {
   sizeScale: number;
   pixelRatio: number;
@@ -271,17 +324,7 @@ export function makeStarMaterial(opts: {
   fadeOut: number;
 }): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
-    uniforms: {
-      uSizeScale: { value: opts.sizeScale },
-      uPixelRatio: { value: opts.pixelRatio },
-      uMinPx: { value: opts.minPx },
-      uNear: { value: opts.near },
-      uFar: { value: opts.far },
-      uFadeIn: { value: opts.fadeIn },
-      uFadeOut: { value: opts.fadeOut },
-      uWarpFade: { value: 1 },
-      uOpacity: { value: 1 },
-    },
+    uniforms: makeStarUniforms(opts),
     vertexShader: STAR_VERT,
     fragmentShader: STAR_FRAG,
     transparent: true,
