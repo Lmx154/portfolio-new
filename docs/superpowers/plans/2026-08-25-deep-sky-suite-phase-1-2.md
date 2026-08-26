@@ -1705,24 +1705,45 @@ describe('buildDustPoints', () => {
     }
   });
 
-  it('sits at a different azimuth from the stellar arm at the same radius', () => {
+  it('crests upstream of the stellar arm, not on top of it', () => {
     // Density-wave theory puts the dust lane on the concave (inner) edge of the
-    // stellar arm, offset upstream — not on top of it.
+    // stellar arm: gas shocks there and stars form downstream. buildDustPoints
+    // encodes that as LANE_OFFSET = -0.18 rad in theta, so measured as an ARM
+    // PHASE (arms * (theta - armTheta)) the dust crest should sit at
+    // arms * LANE_OFFSET = -0.36 rad for a 2-armed Sb, while the stars crest at 0.
+    //
+    // Uses the CIRCULAR mean (atan2 of summed unit vectors), because a plain
+    // arithmetic mean of angles is meaningless across the -pi/pi wrap.
     const inst = instanceOf('Sb', 23);
     const dust = buildDustPoints(makeRng(23), inst, 20000, 10);
-    let offsetSum = 0;
-    let n = 0;
-    for (let i = 0; i < dust.count; i++) {
-      const x = dust.positions[i * 3];
-      const y = dust.positions[i * 3 + 1];
-      const r = Math.hypot(x, y);
-      if (r < 8 || r > 16) continue;
-      const armTheta = Math.atan2(y, x);
-      offsetSum += armTheta;
-      n++;
-    }
-    expect(n).toBeGreaterThan(0);
-    expect(Number.isFinite(offsetSum / n)).toBe(true);
+    const stars = buildDiskPoints(makeRng(23), inst, 20000, 10);
+
+    const crestPhase = (geo: GalaxyGeometry) => {
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      for (let i = 0; i < geo.count; i++) {
+        const x = geo.positions[i * 3];
+        const y = geo.positions[i * 3 + 1];
+        const r = Math.hypot(x, y);
+        if (r < 8 || r > 16) continue;
+        const phase = inst.arms * (Math.atan2(y, x) - spiralArmAngle(r, 10, inst.pitchRad));
+        sx += Math.cos(phase);
+        sy += Math.sin(phase);
+        n += 1;
+      }
+      expect(n).toBeGreaterThan(1000);
+      return Math.atan2(sy, sx);
+    };
+
+    const starCrest = crestPhase(stars);
+    const dustCrest = crestPhase(dust);
+
+    // Stars crest on the arm.
+    expect(Math.abs(starCrest)).toBeLessThan(0.15);
+    // Dust crests upstream of it — negative, and clearly separated.
+    expect(dustCrest).toBeLessThan(-0.15);
+    expect(starCrest - dustCrest).toBeGreaterThan(0.2);
   });
 });
 ```
