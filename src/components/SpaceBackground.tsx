@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { NOISE_GLSL, QUAD_VERT, QUAD_FRAG, NEB_BAKE_FRAG, STREAK_VERT, STREAK_FRAG, makeStarMaterial } from '../space/shaders';
+import { NOISE_GLSL, QUAD_VERT, QUAD_FRAG, STREAK_VERT, STREAK_FRAG, makeStarMaterial } from '../space/shaders';
+import { createBakeRig } from '../space/bakeRig';
+import { createNebulaField } from '../space/nebula';
+import { makeRng } from '../space/rng';
+import type { SpaceCtx } from '../space/types';
 
 /*
  * Dynamic "cruising through space" background.
@@ -53,41 +57,7 @@ const GALAXY_SPEED = 0.35; // galaxies drift slower than the field → feel dist
 const METEOR_MIN_WAIT = 5; // seconds between shooting stars (min)
 const METEOR_RAND_WAIT = 11; // + up to this many more
 
-// ---- Nebula presets (mix & match) -----------------------------------------
-const PALETTE_HEX: Record<string, string[]> = {
-  crab: ['#10324a', '#2f7fa0', '#bfe6f2', '#e0b24a', '#b5552a'],
-  emission: ['#241246', '#7a2d8f', '#d6478f', '#ff7a6b', '#7fa0ff'],
-  reflection: ['#0a1736', '#244e9e', '#3f8fe0', '#9fd0ff', '#eaf4ff'],
-  ember: ['#160a06', '#5a2410', '#a8521e', '#e0934a', '#f5d9a8'],
-  oxygen: ['#06231f', '#157a5f', '#3fd0a0', '#bff0d8', '#d8d04a'],
-  pillars: ['#10210a', '#3a5f1f', '#7fae3f', '#d9c24a', '#b5773a'],
-};
-
-// Cloud structure presets. `coverage`/`softness` shape how much sky the gas
-// fills and how feathered its edges are; `warp` stays low — high warp is what
-// produced the old marbled-silk look.
-type Structure = {
-  scale: number;
-  warp: number;
-  coverage: number;
-  softness: number;
-  detail: number;
-  contrast: number;
-  intensity: number;
-};
-const STRUCTURES: Structure[] = [
-  { scale: 1.6, warp: 1.2, coverage: 0.38, softness: 0.34, detail: 1.0, contrast: 1.1, intensity: 1.0 },
-  { scale: 2.2, warp: 0.9, coverage: 0.44, softness: 0.28, detail: 1.15, contrast: 1.2, intensity: 0.95 },
-  { scale: 1.3, warp: 1.6, coverage: 0.34, softness: 0.4, detail: 0.9, contrast: 1.0, intensity: 1.05 },
-  { scale: 1.9, warp: 1.1, coverage: 0.4, softness: 0.3, detail: 1.05, contrast: 1.15, intensity: 1.0 },
-];
-
 const SPACE_VIGNETTE = 'radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0) 65%)';
-
-const hexToRgb = (hex: string): [number, number, number] => {
-  const n = parseInt(hex.slice(1), 16);
-  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
-};
 
 // ---- Galaxy bake shader (runs ONCE per galaxy, offscreen) -------------------
 // Four morphologies, picked per galaxy: 0 = classic spiral, 1 = barred spiral,
@@ -234,22 +204,6 @@ const METEOR_HEAD_FRAG = /* glsl */ `
   }
 `;
 
-const gauss3 = () => Math.random() + Math.random() + Math.random() - 1.5;
-
-type NebulaParams = {
-  palA: [number, number, number][];
-  palB: [number, number, number][];
-  st: Structure;
-  seedX: number;
-  seedY: number;
-  rot: number;
-  anisoX: number;
-  anisoY: number;
-  lightX: number;
-  lightY: number;
-  blobs: { x: number; y: number; r: number; a: number }[];
-};
-
 type Meteor = {
   active: boolean;
   x: number;
@@ -273,13 +227,11 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     const container = containerRef.current;
     if (!container) return;
 
-    const gasOpacity = GAS_OPACITY;
     const cruiseSpeed = CRUISE_SPEED;
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const isMobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
-    const NEB_BAKE_RES = isMobile ? 512 : 1024;
     const GALAXY_BAKE_RES = isMobile ? 256 : 512;
 
     // --- Renderer / scene / camera ---
@@ -303,39 +255,20 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     const sizeScale = () => window.innerHeight * 0.5;
 
     const color = new THREE.Color();
-    const palettes = Object.values(PALETTE_HEX).map((stops) => stops.map(hexToRgb));
-    const structures = STRUCTURES;
 
     // -----------------------------------------------------------------------
     // Bake rig: one ortho quad scene reused for every nebula/galaxy bake.
     // -----------------------------------------------------------------------
-    const bakeScene = new THREE.Scene();
-    const bakeCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
-    bakeCam.position.z = 1;
+    const { bakeInto, makeTarget, dispose: disposeBakeRig } = createBakeRig(renderer);
 
-    const nebBakeMat = new THREE.ShaderMaterial({
-      uniforms: {
-        uPaletteA: { value: [0, 0, 0, 0, 0].map(() => new THREE.Vector3()) },
-        uPaletteB: { value: [0, 0, 0, 0, 0].map(() => new THREE.Vector3()) },
-        uSeed: { value: new THREE.Vector2() },
-        uAniso: { value: new THREE.Vector2(1, 1) },
-        uLightDir: { value: new THREE.Vector2(1, 0) },
-        uBlob: { value: [0, 0, 0].map(() => new THREE.Vector4()) },
-        uRot: { value: 0 },
-        uScale: { value: 2 },
-        uWarp: { value: 1 },
-        uCoverage: { value: 0.4 },
-        uSoftness: { value: 0.3 },
-        uDetail: { value: 1 },
-        uContrast: { value: 1.1 },
-      },
-      vertexShader: QUAD_VERT,
-      fragmentShader: NEB_BAKE_FRAG,
-      depthTest: false,
-      depthWrite: false,
-      blending: THREE.NoBlending,
-      precision: 'highp', // inject one clean highp declaration (mobile-safe)
-    });
+    const ctx: SpaceCtx = {
+      renderer,
+      bakeInto,
+      makeTarget,
+      isMobile,
+      // Random per page load; a later `?spacelab` mode will pin this seed.
+      rng: makeRng(Math.floor(Math.random() * 0xffffffff)),
+    };
 
     const galaxyBakeMat = new THREE.ShaderMaterial({
       uniforms: {
@@ -355,85 +288,6 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       blending: THREE.NoBlending,
       precision: 'highp',
     });
-
-    const bakeQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), nebBakeMat);
-    bakeScene.add(bakeQuad);
-
-    const makeTarget = (size: number) =>
-      new THREE.WebGLRenderTarget(size, size, {
-        depthBuffer: false,
-        stencilBuffer: false,
-        generateMipmaps: true,
-        minFilter: THREE.LinearMipmapLinearFilter,
-        magFilter: THREE.LinearFilter,
-      });
-
-    const bakeInto = (target: THREE.WebGLRenderTarget | null, material: THREE.ShaderMaterial) => {
-      bakeQuad.material = material;
-      renderer.setClearColor(0x000000, 0);
-      renderer.setRenderTarget(target);
-      renderer.clear();
-      renderer.render(bakeScene, bakeCam);
-      renderer.setRenderTarget(null);
-      renderer.setClearColor(0x000000, 1);
-    };
-
-    const applyNebulaParams = (P: NebulaParams) => {
-      const u = nebBakeMat.uniforms;
-      for (let i = 0; i < 5; i++) {
-        (u.uPaletteA.value as THREE.Vector3[])[i].set(P.palA[i][0], P.palA[i][1], P.palA[i][2]);
-        (u.uPaletteB.value as THREE.Vector3[])[i].set(P.palB[i][0], P.palB[i][1], P.palB[i][2]);
-      }
-      (u.uSeed.value as THREE.Vector2).set(P.seedX, P.seedY);
-      (u.uAniso.value as THREE.Vector2).set(P.anisoX, P.anisoY);
-      (u.uLightDir.value as THREE.Vector2).set(P.lightX, P.lightY);
-      for (let i = 0; i < 3; i++) {
-        const b = P.blobs[i];
-        (u.uBlob.value as THREE.Vector4[])[i].set(b.x, b.y, b.r, b.a);
-      }
-      u.uRot.value = P.rot;
-      u.uScale.value = P.st.scale;
-      u.uWarp.value = P.st.warp;
-      u.uCoverage.value = P.st.coverage;
-      u.uSoftness.value = P.st.softness;
-      u.uDetail.value = P.st.detail;
-      u.uContrast.value = P.st.contrast;
-    };
-
-    const randomParams = (): NebulaParams => {
-      const a = Math.floor(Math.random() * palettes.length);
-      let b = Math.floor(Math.random() * palettes.length);
-      if (b === a) b = (a + 1) % palettes.length;
-      const lightAngle = Math.random() * Math.PI * 2;
-      // One dominant clump near the middle + two satellites drifting off it.
-      const blobs = [
-        { x: (Math.random() - 0.5) * 0.3, y: (Math.random() - 0.5) * 0.3, r: 0.45 + Math.random() * 0.2, a: 0.9 + Math.random() * 0.1 },
-        { x: (Math.random() - 0.5) * 0.9, y: (Math.random() - 0.5) * 0.9, r: 0.22 + Math.random() * 0.2, a: 0.55 + Math.random() * 0.35 },
-        { x: (Math.random() - 0.5) * 1.1, y: (Math.random() - 0.5) * 1.1, r: 0.16 + Math.random() * 0.18, a: 0.4 + Math.random() * 0.4 },
-      ];
-      return {
-        palA: palettes[a],
-        palB: palettes[b],
-        st: structures[Math.floor(Math.random() * structures.length)],
-        // Keep noise coords small so floor()/fract() stay precise on mobile GPUs.
-        seedX: Math.random() * 6,
-        seedY: Math.random() * 6,
-        rot: Math.random() * Math.PI,
-        anisoX: 0.6 + Math.random() * 0.9,
-        anisoY: 0.6 + Math.random() * 0.9,
-        lightX: Math.cos(lightAngle),
-        lightY: Math.sin(lightAngle),
-        blobs,
-      };
-    };
-
-    // --- Offscreen sampler: rebake tiny + read back for star placement. ---
-    const rt = new THREE.WebGLRenderTarget(SAMPLE_RES, SAMPLE_RES, { depthBuffer: false, stencilBuffer: false });
-    const rtBuf = new Uint8Array(SAMPLE_RES * SAMPLE_RES * 4);
-    const sampleNebula = () => {
-      bakeInto(rt, nebBakeMat);
-      renderer.readRenderTargetPixels(rt, 0, 0, SAMPLE_RES, SAMPLE_RES, rtBuf);
-    };
 
     // ---------------------------------------------------------------------
     // Field stars
@@ -520,14 +374,39 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     scene.add(streaks);
     const streakPosAttr = streakGeo.getAttribute('position') as THREE.BufferAttribute;
 
+    const fieldPosAttr = fieldGeo.getAttribute('position') as THREE.BufferAttribute;
+
+    const fadeAt = (z: number) => {
+      const fin = THREE.MathUtils.smoothstep(z, FAR, FAR + FADE_IN);
+      const fout = 1 - THREE.MathUtils.smoothstep(z, NEAR - FADE_OUT, NEAR);
+      return Math.max(0, Math.min(1, fin * fout));
+    };
+
     // ---------------------------------------------------------------------
-    // Clusters: a baked nebula texture quad + stars sampled from it
+    // Nebulae: baked gas-cloud quads + stars sampled from each cloud
     // ---------------------------------------------------------------------
-    type Cluster = { x: number; y: number; z: number; size: number };
-    const clusters: Cluster[] = [];
-    const gasMeshes: THREE.Mesh[] = [];
-    const gasMats: THREE.ShaderMaterial[] = [];
-    const gasTargets: THREE.WebGLRenderTarget[] = [];
+    const nebulae = createNebulaField(ctx, {
+      count: CLUSTER_COUNT,
+      starsPerCloud: STARS_PER_CLUSTER,
+      sampleRes: SAMPLE_RES,
+      gasOpacity: GAS_OPACITY,
+      far: FAR,
+      near: NEAR,
+      sizeScale: sizeScale(),
+      pixelRatio,
+      minPx: MIN_PX,
+      fadeIn: FADE_IN,
+      fadeOut: FADE_OUT,
+    });
+    scene.add(nebulae.group);
+    // Prime positions/opacity before the first render — mirrors the one-time
+    // writeClusterPositions() call the pre-extraction code made here.
+    nebulae.advance(0, fadeAt);
+    const nebulaMat = nebulae.points.material as THREE.ShaderMaterial;
+
+    // ---------------------------------------------------------------------
+    // Galaxies: small baked spiral sprites drifting far away
+    // ---------------------------------------------------------------------
     const planeGeo = new THREE.PlaneGeometry(1, 1);
 
     const makeQuadMaterial = (tex: THREE.Texture) =>
@@ -545,134 +424,6 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
         side: THREE.DoubleSide,
       });
 
-    for (let k = 0; k < CLUSTER_COUNT; k++) {
-      const target = makeTarget(NEB_BAKE_RES);
-      const mat = makeQuadMaterial(target.texture);
-      const mesh = new THREE.Mesh(planeGeo, mat);
-      mesh.renderOrder = -1;
-      mesh.frustumCulled = false;
-      scene.add(mesh);
-      gasTargets.push(target);
-      gasMeshes.push(mesh);
-      gasMats.push(mat);
-    }
-
-    const clusterTotal = CLUSTER_COUNT * STARS_PER_CLUSTER;
-    const clusterPos = new Float32Array(clusterTotal * 3);
-    const clusterOffset = new Float32Array(clusterTotal * 3);
-    const clusterColor = new Float32Array(clusterTotal * 3);
-    const clusterSize = new Float32Array(clusterTotal);
-
-    const regenCluster = (k: number) => {
-      const z = FAR;
-      const az = Math.abs(z);
-      const c: Cluster = {
-        x: (Math.random() - 0.5) * 2 * az * 0.4,
-        y: (Math.random() - 0.5) * 2 * az * 0.32,
-        z,
-        size: 800 + Math.random() * 800,
-      };
-      clusters[k] = c;
-
-      const P = randomParams();
-      applyNebulaParams(P);
-      // Bake the cloud once into this cluster's texture; the per-frame cost
-      // of the nebula is then a single texture fetch.
-      bakeInto(gasTargets[k], nebBakeMat);
-      gasMeshes[k].scale.set(c.size, c.size, 1);
-
-      // Rebake tiny, then importance-sample stars from that exact output.
-      sampleNebula();
-      const span = c.size;
-      const R = SAMPLE_RES;
-      for (let j = 0; j < STARS_PER_CLUSTER; j++) {
-        const gi = k * STARS_PER_CLUSTER + j;
-        let bx = 0;
-        let by = 0;
-        let dens = 0;
-        for (let tries = 0; tries < 12; tries++) {
-          bx = (Math.random() * R) | 0;
-          by = (Math.random() * R) | 0;
-          dens = rtBuf[(by * R + bx) * 4 + 3] / 255;
-          if (dens > Math.random() * 0.8) break;
-        }
-        clusterOffset[gi * 3] = ((bx + 0.5) / R - 0.5) * span;
-        clusterOffset[gi * 3 + 1] = ((by + 0.5) / R - 0.5) * span;
-        clusterOffset[gi * 3 + 2] = gauss3() * span * 0.12;
-
-        const pi = (by * R + bx) * 4;
-        if (Math.random() < 0.12) {
-          color.setHSL(0, 0, 0.9 + Math.random() * 0.1);
-        } else {
-          const boost = 0.6 + Math.random() * 0.7;
-          color.setRGB(
-            Math.min(1, (rtBuf[pi] / 255) * boost + 0.12),
-            Math.min(1, (rtBuf[pi + 1] / 255) * boost + 0.12),
-            Math.min(1, (rtBuf[pi + 2] / 255) * boost + 0.12),
-          );
-        }
-        clusterColor[gi * 3] = color.r;
-        clusterColor[gi * 3 + 1] = color.g;
-        clusterColor[gi * 3 + 2] = color.b;
-        const big = Math.random() < (dens > 0.6 ? 0.14 : 0.05);
-        clusterSize[gi] = big ? 2.2 + Math.random() * 1.8 : 0.7 + Math.random() * 1.2;
-      }
-    };
-
-    for (let k = 0; k < CLUSTER_COUNT; k++) {
-      regenCluster(k);
-      clusters[k].z = FAR + Math.random() * (NEAR - FAR);
-    }
-
-    const clusterGeo = new THREE.BufferGeometry();
-    clusterGeo.setAttribute('position', new THREE.BufferAttribute(clusterPos, 3));
-    clusterGeo.setAttribute('aColor', new THREE.BufferAttribute(clusterColor, 3));
-    clusterGeo.setAttribute('aSize', new THREE.BufferAttribute(clusterSize, 1));
-    const clusterMat = makeStarMaterial({
-      sizeScale: sizeScale(),
-      pixelRatio,
-      minPx: MIN_PX,
-      near: NEAR,
-      far: FAR,
-      fadeIn: FADE_IN,
-      fadeOut: FADE_OUT,
-    });
-    const clusterPoints = new THREE.Points(clusterGeo, clusterMat);
-    clusterPoints.frustumCulled = false;
-    scene.add(clusterPoints);
-
-    const clusterPosAttr = clusterGeo.getAttribute('position') as THREE.BufferAttribute;
-    const clusterColorAttr = clusterGeo.getAttribute('aColor') as THREE.BufferAttribute;
-    const clusterSizeAttr = clusterGeo.getAttribute('aSize') as THREE.BufferAttribute;
-    const fieldPosAttr = fieldGeo.getAttribute('position') as THREE.BufferAttribute;
-
-    const fadeAt = (z: number) => {
-      const fin = THREE.MathUtils.smoothstep(z, FAR, FAR + FADE_IN);
-      const fout = 1 - THREE.MathUtils.smoothstep(z, NEAR - FADE_OUT, NEAR);
-      return Math.max(0, Math.min(1, fin * fout));
-    };
-
-    const writeClusterPositions = () => {
-      for (let k = 0; k < CLUSTER_COUNT; k++) {
-        const c = clusters[k];
-        gasMeshes[k].position.set(c.x, c.y, c.z);
-        const op = gasOpacity * fadeAt(c.z);
-        gasMats[k].uniforms.uOpacity.value = op;
-        gasMeshes[k].visible = op > 0.003;
-        for (let j = 0; j < STARS_PER_CLUSTER; j++) {
-          const gi = k * STARS_PER_CLUSTER + j;
-          clusterPos[gi * 3] = c.x + clusterOffset[gi * 3];
-          clusterPos[gi * 3 + 1] = c.y + clusterOffset[gi * 3 + 1];
-          clusterPos[gi * 3 + 2] = c.z + clusterOffset[gi * 3 + 2];
-        }
-      }
-    };
-    writeClusterPositions();
-    clusterPosAttr.needsUpdate = true;
-
-    // ---------------------------------------------------------------------
-    // Galaxies: small baked spiral sprites drifting far away
-    // ---------------------------------------------------------------------
     type Galaxy = {
       x: number;
       y: number;
@@ -909,7 +660,7 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
       fieldMat.uniforms.uSizeScale.value = sizeScale();
-      clusterMat.uniforms.uSizeScale.value = sizeScale();
+      nebulae.onResize(sizeScale());
       meteorHeadMat.uniforms.uSizeScale.value = sizeScale();
       if (prefersReducedMotion) renderer.render(scene, camera);
     };
@@ -963,9 +714,9 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
 
       // Drive the warp streaks + dim the round stars while warping.
       fieldMat.uniforms.uWarpFade.value = 1 - 0.82 * warpEased;
-      clusterMat.uniforms.uWarpFade.value = 1 - 0.82 * warpEased;
+      nebulaMat.uniforms.uWarpFade.value = 1 - 0.82 * warpEased;
       fieldMat.uniforms.uTime.value = clock.elapsedTime;
-      clusterMat.uniforms.uTime.value = clock.elapsedTime;
+      nebulaMat.uniforms.uTime.value = clock.elapsedTime;
       streakMat.uniforms.uWarp.value = warpEased;
       streakMat.uniforms.uStreakLen.value = warpEased * STREAK_MAX;
       if (warp > 0.001) {
@@ -987,21 +738,7 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
         streaks.visible = false;
       }
 
-      let colorDirty = false;
-      for (let k = 0; k < CLUSTER_COUNT; k++) {
-        const c = clusters[k];
-        c.z += step;
-        if (c.z - c.size * 0.5 > NEAR) {
-          regenCluster(k);
-          colorDirty = true;
-        }
-      }
-      writeClusterPositions();
-      clusterPosAttr.needsUpdate = true;
-      if (colorDirty) {
-        clusterColorAttr.needsUpdate = true;
-        clusterSizeAttr.needsUpdate = true;
-      }
+      nebulae.advance(step, fadeAt);
 
       // Galaxies drift by slower (parallax says "much farther away").
       for (const g of galaxies) {
@@ -1059,11 +796,7 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     const onContextRestored = () => {
       contextLost = false;
       // Rebake every nebula/galaxy — RT contents don't survive context loss.
-      for (let k = 0; k < CLUSTER_COUNT; k++) {
-        const keepZ = clusters[k].z;
-        regenCluster(k);
-        clusters[k].z = keepZ;
-      }
+      nebulae.rebake();
       for (const g of galaxies) bakeGalaxy(g);
       if (prefersReducedMotion) {
         camera.lookAt(0, 0, -600);
@@ -1089,23 +822,18 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       fieldMat.dispose();
       streakGeo.dispose();
       streakMat.dispose();
-      clusterGeo.dispose();
-      clusterMat.dispose();
+      nebulae.dispose();
       meteorTailGeo.dispose();
       meteorTailMat.dispose();
       meteorHeadGeo.dispose();
       meteorHeadMat.dispose();
       planeGeo.dispose();
-      for (const m of gasMats) m.dispose();
-      for (const t of gasTargets) t.dispose();
       for (const g of galaxies) {
         g.mat.dispose();
         g.target.dispose();
       }
-      nebBakeMat.dispose();
       galaxyBakeMat.dispose();
-      bakeQuad.geometry.dispose();
-      rt.dispose();
+      disposeBakeRig();
       renderer.dispose();
       renderer.forceContextLoss();
       triggerWarpRef.current = null;

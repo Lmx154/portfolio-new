@@ -10,6 +10,8 @@ export type SpaceCtx = {
   renderer: THREE.WebGLRenderer;
   /** Render a material into an offscreen target using the shared ortho bake rig. */
   bakeInto: (target: THREE.WebGLRenderTarget | null, material: THREE.ShaderMaterial) => void;
+  /** Allocate an offscreen render target sized for a bake, via the shared rig. */
+  makeTarget: (size: number) => THREE.WebGLRenderTarget;
   isMobile: boolean;
   /** Seeded — see src/space/rng.ts. Builders must not call Math.random(). */
   rng: () => number;
