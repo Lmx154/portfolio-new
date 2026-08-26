@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { NOISE_GLSL, QUAD_VERT, QUAD_FRAG, STREAK_VERT, STREAK_FRAG, makeStarMaterial } from '../space/shaders';
+import { NOISE_GLSL, QUAD_VERT, QUAD_FRAG } from '../space/shaders';
 import { createBakeRig } from '../space/bakeRig';
 import { createNebulaField } from '../space/nebula';
+import { createFieldStars } from '../space/field';
+import { createMeteors } from '../space/meteors';
 import { makeRng } from '../space/rng';
 import type { SpaceCtx } from '../space/types';
 
@@ -161,61 +163,6 @@ const GALAXY_BAKE_FRAG = /* glsl */ `
   }
 `;
 
-// ---- Shooting star shaders --------------------------------------------------
-const METEOR_TAIL_VERT = /* glsl */ `
-  attribute float aAlpha;
-  varying float vA;
-  void main() {
-    vA = aAlpha;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-const METEOR_TAIL_FRAG = /* glsl */ `
-  precision mediump float;
-  varying float vA;
-  void main() {
-    gl_FragColor = vec4(vec3(0.95, 0.93, 0.86), vA);
-  }
-`;
-
-const METEOR_HEAD_VERT = /* glsl */ `
-  attribute float aAlpha;
-  varying float vA;
-  uniform float uSizeScale;
-  uniform float uPixelRatio;
-  void main() {
-    vA = aAlpha;
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    gl_Position = projectionMatrix * mv;
-    float sizeCss = clamp(uSizeScale * 4.0 / max(-mv.z, 1.0), 2.0, 8.0);
-    gl_PointSize = sizeCss * uPixelRatio;
-  }
-`;
-
-const METEOR_HEAD_FRAG = /* glsl */ `
-  precision mediump float;
-  varying float vA;
-  void main() {
-    float d = length(gl_PointCoord - 0.5);
-    if (d > 0.5) discard;
-    float core = 1.0 - smoothstep(0.0, 0.5, d);
-    gl_FragColor = vec4(vec3(1.0, 0.98, 0.92), pow(core, 1.4) * vA);
-  }
-`;
-
-type Meteor = {
-  active: boolean;
-  x: number;
-  y: number;
-  z: number;
-  vx: number;
-  vy: number;
-  len: number;
-  life: number;
-  ttl: number;
-};
-
 const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   // Set by the scene effect; called from the warpSignal effect below to kick
@@ -254,8 +201,6 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
 
     const sizeScale = () => window.innerHeight * 0.5;
 
-    const color = new THREE.Color();
-
     // -----------------------------------------------------------------------
     // Bake rig: one ortho quad scene reused for every nebula/galaxy bake.
     // -----------------------------------------------------------------------
@@ -290,91 +235,20 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     });
 
     // ---------------------------------------------------------------------
-    // Field stars
+    // Field stars (+ warp streaks — a rendering mode of the same buffers)
     // ---------------------------------------------------------------------
-    const fieldPos = new Float32Array(FIELD_STARS * 3);
-    const fieldColor = new Float32Array(FIELD_STARS * 3);
-    const fieldSize = new Float32Array(FIELD_STARS);
-
-    const placeFieldStar = (i: number, z: number) => {
-      const az = Math.abs(z);
-      fieldPos[i * 3] = (Math.random() - 0.5) * 2 * az * FIELD_SPREAD;
-      fieldPos[i * 3 + 1] = (Math.random() - 0.5) * 2 * az * FIELD_SPREAD * 0.8;
-      fieldPos[i * 3 + 2] = z;
-    };
-    const setFieldColor = (i: number) => {
-      const roll = Math.random();
-      if (roll < 0.62) color.setHSL(0, 0, 0.85 + Math.random() * 0.15);
-      else if (roll < 0.82) color.setHSL(0.6, 0.45, 0.82);
-      else if (roll < 0.92) color.setHSL(0.53, 0.5, 0.8);
-      else if (roll < 0.98) color.setHSL(0.08, 0.55, 0.82);
-      else color.setHSL(0.02, 0.6, 0.75);
-      fieldColor[i * 3] = color.r;
-      fieldColor[i * 3 + 1] = color.g;
-      fieldColor[i * 3 + 2] = color.b;
-      fieldSize[i] = Math.random() < 0.9 ? 1.1 + Math.random() * 1.7 : 3 + Math.random() * 2.5;
-    };
-    for (let i = 0; i < FIELD_STARS; i++) {
-      placeFieldStar(i, FAR + Math.random() * (NEAR - FAR));
-      setFieldColor(i);
-    }
-    const fieldGeo = new THREE.BufferGeometry();
-    fieldGeo.setAttribute('position', new THREE.BufferAttribute(fieldPos, 3));
-    fieldGeo.setAttribute('aColor', new THREE.BufferAttribute(fieldColor, 3));
-    fieldGeo.setAttribute('aSize', new THREE.BufferAttribute(fieldSize, 1));
-    const fieldMat = makeStarMaterial({
+    const field = createFieldStars(ctx, {
+      count: FIELD_STARS,
+      spread: FIELD_SPREAD,
+      far: FAR,
+      near: NEAR,
+      minPx: MIN_PX,
       sizeScale: sizeScale(),
       pixelRatio,
-      minPx: MIN_PX,
-      near: NEAR,
-      far: FAR,
       fadeIn: FADE_IN,
       fadeOut: FADE_OUT,
     });
-    const field = new THREE.Points(fieldGeo, fieldMat);
-    field.frustumCulled = false;
-    scene.add(field);
-
-    // --- Warp streaks: a line per field star (head + trailing tail vertex) ---
-    const streakPos = new Float32Array(FIELD_STARS * 2 * 3);
-    const streakEnd = new Float32Array(FIELD_STARS * 2);
-    const streakColor = new Float32Array(FIELD_STARS * 2 * 3);
-    for (let i = 0; i < FIELD_STARS; i++) {
-      streakEnd[i * 2] = 0; // head
-      streakEnd[i * 2 + 1] = 1; // tail
-      for (let e = 0; e < 2; e++) {
-        streakColor[(i * 2 + e) * 3] = fieldColor[i * 3];
-        streakColor[(i * 2 + e) * 3 + 1] = fieldColor[i * 3 + 1];
-        streakColor[(i * 2 + e) * 3 + 2] = fieldColor[i * 3 + 2];
-      }
-    }
-    const streakGeo = new THREE.BufferGeometry();
-    streakGeo.setAttribute('position', new THREE.BufferAttribute(streakPos, 3));
-    streakGeo.setAttribute('aEnd', new THREE.BufferAttribute(streakEnd, 1));
-    streakGeo.setAttribute('aColor', new THREE.BufferAttribute(streakColor, 3));
-    const streakMat = new THREE.ShaderMaterial({
-      uniforms: {
-        uStreakLen: { value: 0 },
-        uWarp: { value: 0 },
-        uNear: { value: NEAR },
-        uFar: { value: FAR },
-        uFadeIn: { value: FADE_IN },
-        uFadeOut: { value: FADE_OUT },
-      },
-      vertexShader: STREAK_VERT,
-      fragmentShader: STREAK_FRAG,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-    const streaks = new THREE.LineSegments(streakGeo, streakMat);
-    streaks.frustumCulled = false;
-    streaks.visible = false;
-    scene.add(streaks);
-    const streakPosAttr = streakGeo.getAttribute('position') as THREE.BufferAttribute;
-
-    const fieldPosAttr = fieldGeo.getAttribute('position') as THREE.BufferAttribute;
+    scene.add(field.group);
 
     const fadeAt = (z: number) => {
       const fin = THREE.MathUtils.smoothstep(z, FAR, FAR + FADE_IN);
@@ -527,123 +401,16 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     // ---------------------------------------------------------------------
     // Shooting stars: a small pool of head+tail meteors on random timers
     // ---------------------------------------------------------------------
-    const meteors: Meteor[] = Array.from({ length: METEOR_MAX }, () => ({
-      active: false, x: 0, y: 0, z: -400, vx: 0, vy: 0, len: 0, life: 0, ttl: 1,
-    }));
-    let meteorWait = METEOR_MIN_WAIT + Math.random() * METEOR_RAND_WAIT;
-
-    const meteorTailPos = new Float32Array(METEOR_MAX * 2 * 3);
-    const meteorTailAlpha = new Float32Array(METEOR_MAX * 2);
-    const meteorTailGeo = new THREE.BufferGeometry();
-    meteorTailGeo.setAttribute('position', new THREE.BufferAttribute(meteorTailPos, 3));
-    meteorTailGeo.setAttribute('aAlpha', new THREE.BufferAttribute(meteorTailAlpha, 1));
-    const meteorTailMat = new THREE.ShaderMaterial({
-      vertexShader: METEOR_TAIL_VERT,
-      fragmentShader: METEOR_TAIL_FRAG,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
+    const meteors = createMeteors(ctx, {
+      max: METEOR_MAX,
+      minWait: METEOR_MIN_WAIT,
+      randWait: METEOR_RAND_WAIT,
+      far: FAR,
+      near: NEAR,
+      sizeScale: sizeScale(),
+      pixelRatio,
     });
-    const meteorTails = new THREE.LineSegments(meteorTailGeo, meteorTailMat);
-    meteorTails.frustumCulled = false;
-    meteorTails.visible = false;
-    scene.add(meteorTails);
-
-    const meteorHeadPos = new Float32Array(METEOR_MAX * 3);
-    const meteorHeadAlpha = new Float32Array(METEOR_MAX);
-    const meteorHeadGeo = new THREE.BufferGeometry();
-    meteorHeadGeo.setAttribute('position', new THREE.BufferAttribute(meteorHeadPos, 3));
-    meteorHeadGeo.setAttribute('aAlpha', new THREE.BufferAttribute(meteorHeadAlpha, 1));
-    const meteorHeadMat = new THREE.ShaderMaterial({
-      uniforms: {
-        uSizeScale: { value: sizeScale() },
-        uPixelRatio: { value: pixelRatio },
-      },
-      vertexShader: METEOR_HEAD_VERT,
-      fragmentShader: METEOR_HEAD_FRAG,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    });
-    const meteorHeads = new THREE.Points(meteorHeadGeo, meteorHeadMat);
-    meteorHeads.frustumCulled = false;
-    meteorHeads.visible = false;
-    scene.add(meteorHeads);
-
-    const meteorTailPosAttr = meteorTailGeo.getAttribute('position') as THREE.BufferAttribute;
-    const meteorTailAlphaAttr = meteorTailGeo.getAttribute('aAlpha') as THREE.BufferAttribute;
-    const meteorHeadPosAttr = meteorHeadGeo.getAttribute('position') as THREE.BufferAttribute;
-    const meteorHeadAlphaAttr = meteorHeadGeo.getAttribute('aAlpha') as THREE.BufferAttribute;
-
-    const spawnMeteor = () => {
-      const m = meteors.find((mm) => !mm.active);
-      if (!m) return;
-      const z = -(250 + Math.random() * 550);
-      const az = Math.abs(z);
-      m.z = z;
-      // Start in the upper half, streak diagonally down-left or down-right.
-      m.x = (Math.random() - 0.5) * 2 * az * 0.55;
-      m.y = (0.15 + Math.random() * 0.5) * az * 0.6;
-      const dirX = (Math.random() < 0.5 ? -1 : 1) * (0.55 + Math.random() * 0.45);
-      const dirY = -(0.35 + Math.random() * 0.5);
-      const norm = Math.hypot(dirX, dirY);
-      const speed = az * (0.8 + Math.random() * 0.7);
-      m.vx = (dirX / norm) * speed;
-      m.vy = (dirY / norm) * speed;
-      m.len = speed * 0.22;
-      m.life = 0;
-      m.ttl = 0.7 + Math.random() * 0.7;
-      m.active = true;
-    };
-
-    const updateMeteors = (dt: number) => {
-      let anyActive = false;
-      for (let i = 0; i < METEOR_MAX; i++) {
-        const m = meteors[i];
-        const b = i * 6;
-        if (m.active) {
-          m.life += dt;
-          if (m.life >= m.ttl) m.active = false;
-        }
-        if (!m.active) {
-          meteorTailAlpha[i * 2] = 0;
-          meteorTailAlpha[i * 2 + 1] = 0;
-          meteorHeadAlpha[i] = 0;
-          continue;
-        }
-        anyActive = true;
-        m.x += m.vx * dt;
-        m.y += m.vy * dt;
-        const t = m.life / m.ttl;
-        const a = Math.pow(Math.sin(Math.PI * Math.min(t, 1)), 0.7);
-        const inv = 1 / Math.hypot(m.vx, m.vy);
-        const tail = m.len * (0.35 + 0.65 * t); // tail stretches as it burns
-        const tx = m.x - m.vx * inv * tail;
-        const ty = m.y - m.vy * inv * tail;
-        meteorTailPos[b] = m.x;
-        meteorTailPos[b + 1] = m.y;
-        meteorTailPos[b + 2] = m.z;
-        meteorTailPos[b + 3] = tx;
-        meteorTailPos[b + 4] = ty;
-        meteorTailPos[b + 5] = m.z;
-        meteorTailAlpha[i * 2] = a;
-        meteorTailAlpha[i * 2 + 1] = 0;
-        meteorHeadPos[i * 3] = m.x;
-        meteorHeadPos[i * 3 + 1] = m.y;
-        meteorHeadPos[i * 3 + 2] = m.z;
-        meteorHeadAlpha[i] = a;
-      }
-      meteorTails.visible = anyActive;
-      meteorHeads.visible = anyActive;
-      if (anyActive) {
-        meteorTailPosAttr.needsUpdate = true;
-        meteorTailAlphaAttr.needsUpdate = true;
-        meteorHeadPosAttr.needsUpdate = true;
-        meteorHeadAlphaAttr.needsUpdate = true;
-      }
-    };
+    scene.add(meteors.group);
 
     // --- Mouse parallax ---
     let targetX = 0;
@@ -659,9 +426,9 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-      fieldMat.uniforms.uSizeScale.value = sizeScale();
+      field.onResize(sizeScale());
       nebulae.onResize(sizeScale());
-      meteorHeadMat.uniforms.uSizeScale.value = sizeScale();
+      meteors.onResize(sizeScale());
       if (prefersReducedMotion) renderer.render(scene, camera);
     };
     window.addEventListener('resize', onResize);
@@ -705,38 +472,12 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       const warpEased = warp * warp * (3 - 2 * warp); // smoothstep
       const step = (cruiseSpeed + warpEased * (WARP_SPEED - cruiseSpeed)) * dt;
 
-      for (let i = 0; i < FIELD_STARS; i++) {
-        const zi = i * 3 + 2;
-        fieldPos[zi] += step;
-        if (fieldPos[zi] > NEAR) placeFieldStar(i, FAR);
-      }
-      fieldPosAttr.needsUpdate = true;
+      field.advance(step);
 
       // Drive the warp streaks + dim the round stars while warping.
-      fieldMat.uniforms.uWarpFade.value = 1 - 0.82 * warpEased;
+      field.setWarp(warpEased, STREAK_MAX, clock.elapsedTime);
       nebulaMat.uniforms.uWarpFade.value = 1 - 0.82 * warpEased;
-      fieldMat.uniforms.uTime.value = clock.elapsedTime;
       nebulaMat.uniforms.uTime.value = clock.elapsedTime;
-      streakMat.uniforms.uWarp.value = warpEased;
-      streakMat.uniforms.uStreakLen.value = warpEased * STREAK_MAX;
-      if (warp > 0.001) {
-        streaks.visible = true;
-        for (let i = 0; i < FIELD_STARS; i++) {
-          const px = fieldPos[i * 3];
-          const py = fieldPos[i * 3 + 1];
-          const pz = fieldPos[i * 3 + 2];
-          const b = i * 6;
-          streakPos[b] = px;
-          streakPos[b + 1] = py;
-          streakPos[b + 2] = pz;
-          streakPos[b + 3] = px;
-          streakPos[b + 4] = py;
-          streakPos[b + 5] = pz;
-        }
-        streakPosAttr.needsUpdate = true;
-      } else {
-        streaks.visible = false;
-      }
 
       nebulae.advance(step, fadeAt);
 
@@ -749,12 +490,7 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       writeGalaxyPositions();
 
       // Shooting stars (not during warp — streaks own that moment).
-      meteorWait -= dt;
-      if (meteorWait <= 0 && warpEased < 0.05) {
-        spawnMeteor();
-        meteorWait = METEOR_MIN_WAIT + Math.random() * METEOR_RAND_WAIT;
-      }
-      updateMeteors(dt);
+      meteors.update(dt, warpEased);
 
       camera.position.x += (targetX * 26 - camera.position.x) * 0.03;
       camera.position.y += (-targetY * 26 - camera.position.y) * 0.03;
@@ -818,15 +554,9 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       document.removeEventListener('visibilitychange', onVisibility);
       canvas.removeEventListener('webglcontextlost', onContextLost as EventListener);
       canvas.removeEventListener('webglcontextrestored', onContextRestored as EventListener);
-      fieldGeo.dispose();
-      fieldMat.dispose();
-      streakGeo.dispose();
-      streakMat.dispose();
+      field.dispose();
       nebulae.dispose();
-      meteorTailGeo.dispose();
-      meteorTailMat.dispose();
-      meteorHeadGeo.dispose();
-      meteorHeadMat.dispose();
+      meteors.dispose();
       planeGeo.dispose();
       for (const g of galaxies) {
         g.mat.dispose();
