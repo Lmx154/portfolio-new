@@ -5,9 +5,9 @@ import { lazy, Suspense } from 'react';
 // (Three.js + this component) has loaded.
 const SpaceBackground = lazy(() => import('./SpaceBackground'));
 
-const SpaceBackgroundLazy = () => (
+const SpaceBackgroundLazy = (props: { warpSignal?: number }) => (
   <Suspense fallback={<div className="fixed inset-0 z-0 bg-black" />}>
-    <SpaceBackground />
+    <SpaceBackground {...props} />
   </Suspense>
 );
 

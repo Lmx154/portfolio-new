@@ -1,4 +1,3 @@
-import SpaceBackground from './SpaceBackgroundLazy';
 import Header from './Header';
 import Hero from './Hero';
 import Blog from './Blog';
@@ -9,8 +8,7 @@ import { site } from '../data/site';
 
 const HomePage = () => {
   return (
-    <div className="min-h-screen bg-black text-white relative">
-      <SpaceBackground />
+    <div className="min-h-screen text-white relative">
       <Header />
       <main className="relative z-10">
         <Hero />
