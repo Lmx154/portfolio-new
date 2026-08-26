@@ -87,7 +87,30 @@ describe('buildDiskPoints', () => {
     }
     const max = Math.max(...bins);
     const min = Math.min(...bins);
-    expect(max).toBeGreaterThan(min * 1.5);
+    // Threshold calibrated against the shipped code, not guessed. A disk with
+    // NO arms scores 1.24-1.30 (pure binning noise); armed disks score
+    // 1.52-4.13 depending on how many arms the seed rolls (more arms spread
+    // the density over more bins, so 4-arm seeds sit lowest). 1.4 sits clear of
+    // the null without hugging the worst armed case.
+    expect(max / min).toBeGreaterThan(1.4);
+  });
+
+  it('produces no azimuthal structure when the preset has no arms', () => {
+    // The null case for the arm-contrast test above: an armless disk should
+    // score at binning-noise level, well below the armed threshold. Without
+    // this, a metric that always returned a high ratio would pass unnoticed.
+    const geo = buildDiskPoints(makeRng(5), instanceOf('E', 5), 40000, 10);
+    const bins = new Array(36).fill(0);
+    for (let i = 0; i < geo.count; i++) {
+      const x = geo.positions[i * 3];
+      const y = geo.positions[i * 3 + 1];
+      const r = Math.hypot(x, y);
+      if (r < 8 || r > 16) continue;
+      let t = Math.atan2(y, x);
+      if (t < 0) t += Math.PI * 2;
+      bins[Math.floor((t / (Math.PI * 2)) * 36) % 36]++;
+    }
+    expect(Math.max(...bins) / Math.min(...bins)).toBeLessThan(1.35);
   });
 
   it('produces no NaN coordinates', () => {
