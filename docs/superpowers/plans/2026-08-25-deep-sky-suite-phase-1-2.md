@@ -1922,11 +1922,28 @@ Add to `src/space/galaxy.ts`. Key requirements:
    when `ctx.isMobile`.
 2. Build each component's geometry, then **split each into two `THREE.Points`**
    by the `nearHalf` flag.
-3. Add all objects to one `THREE.Group`, then rotate that group by
-   `inclination` about x and `positionAngle` about z. **Rotating the group is
-   what makes inclination correct** — the bulge is a 3D spheroid, so
-   foreshortening it is right; the old bug was foreshortening a *painting* of a
-   face-on galaxy.
+3. Add all objects to a **nested pair** of `THREE.Group`s. Rotating the group is
+   what makes inclination correct — the bulge is a 3D spheroid, so foreshortening
+   it is right; the old bug was foreshortening a *painting* of a face-on galaxy.
+
+   The two rotations must NOT share one group. Three.js composes Euler angles
+   (default order `XYZ`), so setting `rotation.set(inclination, 0, positionAngle)`
+   is not a pure `Rx` — the `Rz` component changes each point's `y` before the
+   `Rx` is applied, and `isNearHalf` assumes world z is exactly
+   `y·sin(i) + z·cos(i)`. Measured: 3 of 6 sample points get misclassified, and
+   `positionAngle` is `rng()·2π` so it is essentially never 0.
+
+   ```ts
+   const inner = new THREE.Group();   // carries ONLY inclination
+   inner.rotation.x = inst.inclination;
+   const outer = new THREE.Group();   // carries ONLY positionAngle
+   outer.rotation.z = inst.positionAngle;
+   outer.add(inner);                  // `outer` is the returned SpaceObject.group
+   ```
+
+   This works because a rotation about z leaves world z untouched, so the outer
+   group re-orients the galaxy on screen without disturbing the near/far ordering
+   the inner group established.
 4. Set `renderOrder` to enforce the pass order:
 
 Every component splits into a far half and a near half, and **all five**
