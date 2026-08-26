@@ -286,3 +286,77 @@ export function buildBarPoints(
 
   return { positions, colors, sizes, nearHalf, count };
 }
+
+/**
+ * Dust: the dark lanes that silhouette against the light behind them.
+ *
+ * Two details make this read correctly. First, the dust layer is about half the
+ * stellar scale height, so it forms a sharp lane rather than a haze. Second, it
+ * sits slightly upstream of the stellar arm — density-wave theory has gas
+ * shocking on the arm's concave edge with stars forming downstream, which is
+ * why photographs show the lane on the inner edge.
+ *
+ * `colors` carries extinction strength here, not emission; the renderer draws
+ * this set with a multiplying blend so it darkens what is already in the
+ * framebuffer.
+ */
+export function buildDustPoints(
+  rng: () => number,
+  inst: GalaxyInstance,
+  count: number,
+  scaleLength: number,
+): GalaxyGeometry {
+  if (inst.preset.dustOpacity <= 0) return EMPTY_GEOMETRY;
+
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  const nearHalf = new Uint8Array(count);
+
+  // Half the stellar scale height — dust settles further than stars do.
+  const z0 = scaleLength * inst.preset.heightRatio * 0.5;
+  // The dust disk is slightly more extended than the stellar disk.
+  const dustScale = scaleLength * 1.15;
+  const maxRadius = scaleLength * 5;
+  // Upstream offset of the lane from the stellar arm crest, in radians.
+  const LANE_OFFSET = -0.18;
+
+  for (let i = 0; i < count; i++) {
+    let radius = sampleExponentialDiskRadius(rng, dustScale);
+    if (radius > maxRadius) radius = maxRadius * (0.5 + rng() * 0.5);
+
+    let theta = rng() * Math.PI * 2;
+    if (inst.arms > 0) {
+      const armTheta = spiralArmAngle(radius, scaleLength, inst.pitchRad) + LANE_OFFSET;
+      for (let tries = 0; tries < 8; tries++) {
+        const candidate = rng() * Math.PI * 2;
+        const phase = inst.arms * (candidate - armTheta);
+        const p = (1 + 0.9 * Math.cos(phase)) / 1.9;
+        if (rng() < p) {
+          theta = candidate;
+          break;
+        }
+      }
+      theta += (rng() - 0.5) * 0.09 * Math.PI;
+    }
+
+    const x = radius * Math.cos(theta);
+    const y = radius * Math.sin(theta);
+    const z = sampleSech2Height(rng, z0);
+
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
+    nearHalf[i] = isNearHalf(y, z, inst.inclination) ? 1 : 0;
+
+    // Extinction strength, reddened: dust removes blue light first.
+    const strength = inst.preset.dustOpacity * (0.5 + rng() * 0.5);
+    colors[i * 3] = strength * 0.75;
+    colors[i * 3 + 1] = strength * 0.9;
+    colors[i * 3 + 2] = strength;
+
+    sizes[i] = 2.5 + rng() * 4.0;
+  }
+
+  return { positions, colors, sizes, nearHalf, count };
+}

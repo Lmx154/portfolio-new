@@ -1,8 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { makeRng } from './rng';
-import { sampleInclination } from './sampling';
+import { sampleInclination, spiralArmAngle } from './sampling';
 import { GALAXY_PRESETS, type GalaxyInstance } from './presets';
-import { buildDiskPoints, buildBulgePoints, buildHiiPoints, buildBarPoints } from './galaxy';
+import {
+  buildDiskPoints,
+  buildBulgePoints,
+  buildHiiPoints,
+  buildBarPoints,
+  buildDustPoints,
+  type GalaxyGeometry,
+} from './galaxy';
 
 function instanceOf(cls: keyof typeof GALAXY_PRESETS, seed: number): GalaxyInstance {
   const rng = makeRng(seed);
@@ -281,5 +288,76 @@ describe('buildBarPoints', () => {
     for (let i = 0; i < geo.positions.length; i++) {
       expect(Number.isFinite(geo.positions[i])).toBe(true);
     }
+  });
+});
+
+describe('buildDustPoints', () => {
+  it('is thinner than the stellar disk', () => {
+    // Dust settles into a layer roughly half the stellar scale height. That is
+    // what lets it read as a sharp lane rather than a general haze.
+    const inst = instanceOf('Sb', 20);
+    const dust = buildDustPoints(makeRng(20), inst, 20000, 10);
+    const stars = buildDiskPoints(makeRng(20), inst, 20000, 10);
+
+    const meanAbsZ = (geo: typeof dust) => {
+      let s = 0;
+      for (let i = 0; i < geo.count; i++) s += Math.abs(geo.positions[i * 3 + 2]);
+      return s / geo.count;
+    };
+
+    expect(meanAbsZ(dust)).toBeLessThan(meanAbsZ(stars) * 0.8);
+  });
+
+  it('returns an empty set for dust-free presets', () => {
+    const geo = buildDustPoints(makeRng(21), instanceOf('E', 21), 5000, 10);
+    expect(geo.count).toBe(0);
+  });
+
+  it('produces no NaN coordinates', () => {
+    const geo = buildDustPoints(makeRng(22), instanceOf('Sa', 22), 5000, 10);
+    for (let i = 0; i < geo.positions.length; i++) {
+      expect(Number.isFinite(geo.positions[i])).toBe(true);
+    }
+  });
+
+  it('crests upstream of the stellar arm, not on top of it', () => {
+    // Density-wave theory puts the dust lane on the concave (inner) edge of the
+    // stellar arm: gas shocks there and stars form downstream. buildDustPoints
+    // encodes that as LANE_OFFSET = -0.18 rad in theta, so measured as an ARM
+    // PHASE (arms * (theta - armTheta)) the dust crest should sit at
+    // arms * LANE_OFFSET = -0.36 rad for a 2-armed Sb, while the stars crest at 0.
+    //
+    // Uses the CIRCULAR mean (atan2 of summed unit vectors), because a plain
+    // arithmetic mean of angles is meaningless across the -pi/pi wrap.
+    const inst = instanceOf('Sb', 23);
+    const dust = buildDustPoints(makeRng(23), inst, 20000, 10);
+    const stars = buildDiskPoints(makeRng(23), inst, 20000, 10);
+
+    const crestPhase = (geo: GalaxyGeometry) => {
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      for (let i = 0; i < geo.count; i++) {
+        const x = geo.positions[i * 3];
+        const y = geo.positions[i * 3 + 1];
+        const r = Math.hypot(x, y);
+        if (r < 8 || r > 16) continue;
+        const phase = inst.arms * (Math.atan2(y, x) - spiralArmAngle(r, 10, inst.pitchRad));
+        sx += Math.cos(phase);
+        sy += Math.sin(phase);
+        n += 1;
+      }
+      expect(n).toBeGreaterThan(1000);
+      return Math.atan2(sy, sx);
+    };
+
+    const starCrest = crestPhase(stars);
+    const dustCrest = crestPhase(dust);
+
+    // Stars crest on the arm.
+    expect(Math.abs(starCrest)).toBeLessThan(0.15);
+    // Dust crests upstream of it — negative, and clearly separated.
+    expect(dustCrest).toBeLessThan(-0.15);
+    expect(starCrest - dustCrest).toBeGreaterThan(0.2);
   });
 });
