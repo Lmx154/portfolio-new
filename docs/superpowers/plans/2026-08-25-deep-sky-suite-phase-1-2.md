@@ -1439,9 +1439,16 @@ Append to `src/space/galaxy.test.ts`:
 import { buildHiiPoints, buildBarPoints } from './galaxy';
 
 describe('buildHiiPoints', () => {
-  it('produces the requested count', () => {
-    const geo = buildHiiPoints(makeRng(11), instanceOf('Sc', 11), 2000, 10);
-    expect(geo.count).toBe(2000);
+  it('scales the requested budget by the preset HII abundance', () => {
+    // `count` is a BUDGET, not an output size: buildHiiPoints returns
+    // round(count * hiiAbundance) so a gas-rich Sc gets far more knots than a
+    // quiescent Sa from the same budget. Expressed as a relationship rather
+    // than a literal because presets.ts is the tuning surface — hardcoding the
+    // product would break the moment someone retunes hiiAbundance.
+    const budget = 2000;
+    const geo = buildHiiPoints(makeRng(11), instanceOf('Sc', 11), budget, 10);
+    expect(geo.count).toBe(Math.round(budget * GALAXY_PRESETS.Sc.hiiAbundance));
+    expect(geo.count).toBeLessThan(budget);
   });
 
   it('clusters far more tightly on arms than the general disk', () => {
