@@ -531,7 +531,13 @@ export function createGalaxy(
     depthWrite: false,
     blending: THREE.CustomBlending,
     blendSrc: THREE.ZeroFactor,
-    blendDst: THREE.OneMinusSrcAlphaFactor,
+    // OneMinusSrcCOLOR, not OneMinusSrcAlpha: `result = dst * (1 - srcColor)`
+    // attenuates each channel independently, so the per-channel extinction
+    // buildDustPoints writes (r 0.75 / g 0.9 / b 1.0 of strength) actually
+    // reaches the framebuffer and reddens the light behind the lane. With
+    // OneMinusSrcAlpha the source colour is discarded entirely and dust darkens
+    // neutrally — grey lanes instead of the brown ones real dust produces.
+    blendDst: THREE.OneMinusSrcColorFactor,
   });
 
   // `inner` carries ONLY the inclination rotation, so isNearHalf's world-z

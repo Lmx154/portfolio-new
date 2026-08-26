@@ -211,7 +211,9 @@ export const DUST_FRAG = /* glsl */ `
     float r2 = dot(d, d);
     if (r2 > 0.25) discard;
     float soft = smoothstep(0.25, 0.0, r2);
-    gl_FragColor = vec4(vColor, soft * vAlpha);
+    // Premultiplied: with OneMinusSrcColor the blend reads the COLOR, so the
+    // soft radial falloff and the per-object opacity must be folded into it.
+    gl_FragColor = vec4(vColor * soft * vAlpha, 1.0);
   }
 `;
 
