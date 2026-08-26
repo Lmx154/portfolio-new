@@ -6,7 +6,6 @@ import { createNebulaField } from '../space/nebula';
 import { createFieldStars } from '../space/field';
 import { createMeteors } from '../space/meteors';
 import { makeRng } from '../space/rng';
-import { isSpacelab, mountSpacelab } from '../space/spacelab';
 import type { SpaceCtx } from '../space/types';
 
 /*
@@ -174,11 +173,6 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
-    // `?spacelab` swaps in the static preset-grid harness (Task 12) instead
-    // of the normal cruising scene. It owns `container` entirely and returns
-    // its own cleanup.
-    if (isSpacelab()) return mountSpacelab(container);
 
     const cruiseSpeed = CRUISE_SPEED;
 

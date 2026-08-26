@@ -10,9 +10,9 @@ import type { SpaceCtx, SpaceObject } from './types';
  * `?spacelab` — a static preset-grid harness for `createGalaxy`.
  *
  * Tasks 6-11 built the 3D galaxy renderer entirely against unit tests; nobody
- * has looked at its output. This mounts a scrollable grid — one row per
- * `GalaxyClass`, four seeded columns per row, plus two diagnostic rows — so a
- * human can finally judge the morphologies and say what needs tuning.
+ * has looked at its output. This mounts a grid — one row per `GalaxyClass`,
+ * four seeded columns per row, plus two diagnostic rows — so a human can
+ * finally judge the morphologies and say what needs tuning.
  *
  * Every cell is seeded (`makeRng(seed)`), so a given seed always produces the
  * same points: reloading the page gives byte-identical cells, which is what
@@ -22,6 +22,13 @@ import type { SpaceCtx, SpaceObject } from './types';
  * rAF loop — cells are meant to sit still so they can be compared side by
  * side, and `uTime` is never advanced (expected: Task 13 adds the per-frame
  * hook that drives twinkle in the real scene).
+ *
+ * Mounting: `mountSpacelab` expects to own a plain, normal-flow container
+ * (see `App.tsx`'s `SpacelabPage`) that is free to grow to the grid's full
+ * height — the page itself scrolls, not some inner clipped box. It must NOT
+ * be mounted underneath the normal site chrome (that was tried once and
+ * produced a fixed background layer fighting the page's own scroll, with
+ * the homepage rendered on top of it).
  *
  * Layout technique: one shared `WebGLRenderer` draws every cell's own
  * `THREE.Scene`/camera into a disjoint rectangle of one big canvas via
@@ -40,9 +47,23 @@ export function isSpacelab(): boolean {
 // ---- Layout constants ------------------------------------------------------
 // All sizes are fixed CSS px, independent of window size or devicePixelRatio,
 // so a given seed renders the same pixels on any machine (modulo AA/sprite
-// edge subpixel differences from a different devicePixelRatio) — the grid
-// scrolls inside its fixed-size container rather than reflowing with it.
-const SEEDS = [1, 2, 3, 4];
+// edge subpixel differences from a different devicePixelRatio) — the page
+// grows to fit the grid and scrolls normally rather than the grid reflowing
+// with the viewport.
+//
+// `instanceForClass` draws pitch, then arm index, then bulge-fraction jitter,
+// then inclination, in that fixed order, for every class — so for a given
+// seed, the raw rng() value behind inclination is identical across all 9
+// rows regardless of which class occupies them. Seeds 1-4 happen to give
+// 11.2°, 57.5°, 85.7°, 85.3° — two near-duplicate edge-on columns and no
+// coverage of the 60-80° band. These four were hand-picked (by running
+// `instanceForClass` over many seeds) for a spread across the sampled
+// distribution instead: low, low-mid, mid-high, edge-on.
+const GRID_SEEDS = [1, 19, 15, 3]; // ~11.2°, ~40.8°, ~63.5°, ~85.7°
+// The dust row fixes inclination explicitly (see DUST_INCLINATION_DEG below),
+// so the seed-vs-inclination coupling above doesn't apply here — plain
+// sequential seeds are fine and keep that row's labels simple.
+const DUST_SEEDS = [1, 2, 3, 4];
 const CELL_W = 340;
 const CELL_H = 340;
 const CAPTION_H = 64;
@@ -53,7 +74,8 @@ const HEADER_GAP = 14;
 const SECTION_GAP = 36;
 
 const ROW_H = CELL_H + CAPTION_H;
-const GRID_W = SEEDS.length * CELL_W + (SEEDS.length - 1) * COL_GAP;
+const COLS = GRID_SEEDS.length; // 4, shared by every row including the dust/inclination rows
+const GRID_W = COLS * CELL_W + (COLS - 1) * COL_GAP;
 
 // Matches Task 13's planned `HERO_SIZE` so this harness previews galaxies at
 // the same world scale the hero scheduler will actually use.
@@ -140,17 +162,12 @@ export function mountSpacelab(container: HTMLElement): () => void {
   const isMobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
   const pixelRatio = Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2);
 
-  // The container is normally the fixed, viewport-sized background layer.
-  // The grid is taller than one screen, so make it scroll internally instead
-  // of clipping — restored on cleanup.
-  const priorOverflow = container.style.overflow;
-  container.style.overflow = 'auto';
-
   const root = document.createElement('div');
-  // `position:relative` makes this a positioned stacking-context sibling of
-  // the always-present vignette overlay div; appended after it in the DOM,
-  // it paints on top by CSS stacking order, so the grid is not darkened by
-  // the vignette (which the normal scene relies on being drawn *under*).
+  // `position:relative` so the absolutely-positioned canvas/captions/headers
+  // below are positioned relative to this element, not the page. `container`
+  // itself is expected to be a plain, normal-flow element (see `SpacelabPage`
+  // in App.tsx) that grows to fit `root`, so the browser's own page scroll —
+  // not an inner clipped box — is what reaches every row.
   root.style.cssText =
     'position:relative;color:#dfe6f2;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;padding:16px;';
   container.appendChild(root);
@@ -226,11 +243,13 @@ export function mountSpacelab(container: HTMLElement): () => void {
     cursorY += ROW_H;
   };
 
-  // ---- Section 1: every GalaxyClass, seeds 1-4 ----------------------------
-  addHeader('Galaxy classes × seeds 1–4 (row = class, column = seed)');
+  // ---- Section 1: every GalaxyClass, seeds chosen for inclination spread --
+  addHeader(
+    `Galaxy classes × seeds ${GRID_SEEDS.join(', ')} (row = class, column = seed — chosen for inclination spread, see comment above)`,
+  );
   const classes = Object.keys(GALAXY_PRESETS) as GalaxyClass[];
   classes.forEach((cls, i) => {
-    addRow(SEEDS.map((seed) => ({ cls, seed })));
+    addRow(GRID_SEEDS.map((seed) => ({ cls, seed })));
     if (i < classes.length - 1) cursorY += ROW_GAP;
   });
 
@@ -258,10 +277,10 @@ export function mountSpacelab(container: HTMLElement): () => void {
   cursorY += SECTION_GAP;
   const DUST_INCLINATION_DEG = 80;
   addHeader(
-    `Dust lanes — SBb @ ~${DUST_INCLINATION_DEG}° inclination, seeds 1–4 — far side dims, near side crisp`,
+    `Dust lanes — SBb @ ~${DUST_INCLINATION_DEG}° inclination, seeds ${DUST_SEEDS.join(', ')} — far side dims, near side crisp`,
   );
   addRow(
-    SEEDS.map((seed) => ({
+    DUST_SEEDS.map((seed) => ({
       cls: 'SBb' as GalaxyClass,
       seed,
       inclinationOverride: deg2rad(DUST_INCLINATION_DEG),
@@ -294,6 +313,5 @@ export function mountSpacelab(container: HTMLElement): () => void {
     renderer.forceContextLoss();
     if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
     if (root.parentNode === container) container.removeChild(root);
-    container.style.overflow = priorOverflow;
   };
 }
