@@ -21,8 +21,10 @@ export type FieldStars = {
   points: THREE.Points;
   /** Advance stars by `step`, recycling any that pass `near`. */
   advance: (step: number) => void;
-  /** Drive the warp envelope: star dim/twinkle time and streak stretch/visibility. */
-  setWarp: (warpEased: number, streakMax: number, elapsedTime: number) => void;
+  /** Drive the warp envelope: star dim/twinkle time and streak stretch/visibility.
+   *  `warp` is the raw (pre-easing) warp value; visibility gates on it rather
+   *  than on `warpEased` to match the original un-extracted behaviour exactly. */
+  setWarp: (warpEased: number, streakMax: number, elapsedTime: number, warp: number) => void;
   /** Rescale the star material for the current viewport (call on resize). */
   onResize: (sizeScale: number) => void;
   dispose: () => void;
@@ -143,12 +145,12 @@ export function createFieldStars(
     fieldPosAttr.needsUpdate = true;
   };
 
-  const setWarp = (warpEased: number, streakMax: number, elapsedTime: number) => {
+  const setWarp = (warpEased: number, streakMax: number, elapsedTime: number, warp: number) => {
     fieldMat.uniforms.uWarpFade.value = 1 - 0.82 * warpEased;
     fieldMat.uniforms.uTime.value = elapsedTime;
     streakMat.uniforms.uWarp.value = warpEased;
     streakMat.uniforms.uStreakLen.value = warpEased * streakMax;
-    if (warpEased > 0.001) {
+    if (warp > 0.001) {
       streaks.visible = true;
       for (let i = 0; i < count; i++) {
         const px = fieldPos[i * 3];

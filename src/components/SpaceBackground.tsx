@@ -276,7 +276,6 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
     // Prime positions/opacity before the first render — mirrors the one-time
     // writeClusterPositions() call the pre-extraction code made here.
     nebulae.advance(0, fadeAt);
-    const nebulaMat = nebulae.points.material as THREE.ShaderMaterial;
 
     // ---------------------------------------------------------------------
     // Galaxies: small baked spiral sprites drifting far away
@@ -405,8 +404,6 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       max: METEOR_MAX,
       minWait: METEOR_MIN_WAIT,
       randWait: METEOR_RAND_WAIT,
-      far: FAR,
-      near: NEAR,
       sizeScale: sizeScale(),
       pixelRatio,
     });
@@ -475,9 +472,8 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       field.advance(step);
 
       // Drive the warp streaks + dim the round stars while warping.
-      field.setWarp(warpEased, STREAK_MAX, clock.elapsedTime);
-      nebulaMat.uniforms.uWarpFade.value = 1 - 0.82 * warpEased;
-      nebulaMat.uniforms.uTime.value = clock.elapsedTime;
+      field.setWarp(warpEased, STREAK_MAX, clock.elapsedTime, warp);
+      nebulae.setWarp(warpEased, clock.elapsedTime);
 
       nebulae.advance(step, fadeAt);
 

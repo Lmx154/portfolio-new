@@ -72,6 +72,8 @@ export type NebulaField = {
   points: THREE.Points;
   /** Advance clouds by `dz`, recycling any that pass `near`. */
   advance: (dz: number, fadeAt: (z: number) => number) => void;
+  /** Drive the warp envelope: dims the cloud stars and advances their twinkle clock. */
+  setWarp: (warpEased: number, elapsedTime: number) => void;
   /** Rebake all clouds after a WebGL context loss. */
   rebake: () => void;
   /** Rescale the star material for the current viewport (call on resize). */
@@ -353,6 +355,11 @@ export function createNebulaField(
     }
   };
 
+  const setWarp = (warpEased: number, elapsedTime: number) => {
+    cloudMat.uniforms.uWarpFade.value = 1 - 0.82 * warpEased;
+    cloudMat.uniforms.uTime.value = elapsedTime;
+  };
+
   const rebake = () => {
     // Rebake every cloud — render-target contents don't survive context loss.
     for (let k = 0; k < count; k++) {
@@ -376,5 +383,5 @@ export function createNebulaField(
     rt.dispose();
   };
 
-  return { group, points, advance, rebake, onResize, dispose };
+  return { group, points, advance, setWarp, rebake, onResize, dispose };
 }

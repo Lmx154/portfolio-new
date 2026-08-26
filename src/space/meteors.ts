@@ -80,10 +80,6 @@ export function createMeteors(
     max: number;
     minWait: number;
     randWait: number;
-    // Accepted for interface symmetry with the other src/space/ builders;
-    // current meteor placement/lifetime math doesn't depend on scene depth.
-    far: number;
-    near: number;
     sizeScale: number;
     pixelRatio: number;
   },
