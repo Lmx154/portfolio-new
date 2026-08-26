@@ -194,17 +194,16 @@ describe('buildBulgePoints', () => {
 });
 
 describe('buildHiiPoints', () => {
-  it('produces the requested count scaled by hiiAbundance', () => {
-    // DEVIATION FROM BRIEF: the brief's literal test asserts toBe(2000), but
-    // buildHiiPoints deterministically returns Math.round(count *
-    // preset.hiiAbundance) points (see galaxy.ts), and Sc's hiiAbundance is
-    // 0.90 (src/space/presets.ts), documented there as "Relative number of
-    // HII knots, 0..1" — i.e. the scaling is the intended behaviour, not a
-    // bug. 2000 * 0.9 = 1800 exactly, with no randomness involved, so the
-    // brief's asserted value is unreachable by design. Corrected to the
-    // measured, deterministic value. Flagged in task-9-report.md for a ruling.
-    const geo = buildHiiPoints(makeRng(11), instanceOf('Sc', 11), 2000, 10);
-    expect(geo.count).toBe(1800);
+  it('scales the requested budget by the preset HII abundance', () => {
+    // `count` is a BUDGET, not an output size: buildHiiPoints returns
+    // round(count * hiiAbundance) so a gas-rich Sc gets far more knots than a
+    // quiescent Sa from the same budget. Expressed as a relationship rather
+    // than a literal because presets.ts is the tuning surface — hardcoding the
+    // product would break the moment someone retunes hiiAbundance.
+    const budget = 2000;
+    const geo = buildHiiPoints(makeRng(11), instanceOf('Sc', 11), budget, 10);
+    expect(geo.count).toBe(Math.round(budget * GALAXY_PRESETS.Sc.hiiAbundance));
+    expect(geo.count).toBeLessThan(budget);
   });
 
   it('clusters far more tightly on arms than the general disk', () => {
