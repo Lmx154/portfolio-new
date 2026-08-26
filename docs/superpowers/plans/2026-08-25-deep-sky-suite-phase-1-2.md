@@ -1929,16 +1929,34 @@ Add to `src/space/galaxy.ts`. Key requirements:
    face-on galaxy.
 4. Set `renderOrder` to enforce the pass order:
 
+Every component splits into a far half and a near half, and **all five**
+components participate — disk, bulge, HII, bar, dust. Additive blending is
+commutative, so ordering *within* a half does not matter; only the dust needs to
+sit between the two halves. That collapses to three tiers rather than one per
+component:
+
 ```ts
 // Extinction only works if the dust is drawn after the light behind it and
-// before the light in front of it.
-farDisk.renderOrder = 0;   // additive
-farBulge.renderOrder = 1;  // additive
-dust.renderOrder = 2;      // multiplying — darkens passes 0-1
-nearBulge.renderOrder = 3; // additive
-nearDisk.renderOrder = 4;  // additive
-nearHii.renderOrder = 5;   // additive
+// before the light in front of it. Additive passes commute, so each half needs
+// only one renderOrder tier between them.
+const FAR_TIER = 0;   // additive: far disk, far bulge, far HII, far bar
+const DUST_TIER = 1;  // multiplying — darkens everything in FAR_TIER
+const NEAR_TIER = 2;  // additive: near disk, near bulge, near HII, near bar
+
+farDisk.renderOrder = FAR_TIER;
+farBulge.renderOrder = FAR_TIER;
+farHii.renderOrder = FAR_TIER;
+farBar.renderOrder = FAR_TIER;
+dust.renderOrder = DUST_TIER;
+nearBar.renderOrder = NEAR_TIER;
+nearBulge.renderOrder = NEAR_TIER;
+nearDisk.renderOrder = NEAR_TIER;
+nearHii.renderOrder = NEAR_TIER;
 ```
+
+Do NOT drop the far-half HII or either bar half: omitting far HII loses half the
+star-forming knots, and omitting the bar removes the feature that defines a
+barred spiral.
 
 5. The dust material uses a multiplying blend:
 
