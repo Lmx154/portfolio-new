@@ -1,109 +1,162 @@
 {
   "type": "blog",
   "id": "marv-v2",
-  "title": "MARV V2",
+  "title": "MARV V2: Redesigning the Flight Computer",
   "status": "published",
   "date": "2026-09-19",
-  "excerpt": "My iteration on MARV ",
-  "readTime": "",
+  "displayDate": "September 19, 2026",
+  "excerpt": "What a season of flying MARV V1 taught me, and how those lessons shaped the second revision of the flight computer.",
+  "readTime": "5 min read",
   "tags": [
-    "Iterating",
-    "Engineering",
+    "Avionics",
     "PCB Design",
-    "Firmware Design"
+    "Firmware Design",
+    "Hardware Design"
   ],
-  "coverImage": "/screenshot-from-2026-10-09-10-40-08.webp",
+  "coverImage": "assets/marv-v2-pcb-top.webp",
   "blocks": [
     {
       "id": "blk_s13gzck",
       "type": "heading",
       "level": 2,
-      "text": "The icentive to improve"
+      "text": "Why a V2"
     },
     {
       "id": "blk_jxctzys",
       "type": "paragraph",
-      "text": "After receiving MARV V1 and working with it for the IREC 2026 season, there were a lot of things that stuck out and needed to be fixed. These fixes fell within several domains and affected the performance and functionality of the system greatly so they were improvements that absolutely had to be made. "
+      "text": "After flying MARV V1 through the IREC 2026 season, a handful of problems stood out. They spanned firmware, power and thermal design, and each one hurt performance or reliability enough that it had to be fixed in the next revision."
+    },
+    {
+      "id": "blk_h1intrp",
+      "type": "heading",
+      "level": 3,
+      "text": "1. No data-ready interrupts"
     },
     {
       "id": "blk_ulgineg",
       "type": "paragraph",
-      "text": "Firstly, the interrupts were missing. At the time of MARV's creation, I didn't have a firm understanding of why data ready interrupts were so critical to realtime control systems. After continuing my work on MARV's firmware I discovered that interrupts were essential if I wanted my sensor samples to arrive the moment they were created. Before this I was using one big loop and a much more complex data retrieval system to draw samples from many sensors at once. The drawback here was the complexity of the code and stale data. For MARV V2, using interrupts allowed us to get rid of these bottlenecks."
+      "text": "When I designed MARV V1, I didn't yet appreciate how critical data-ready interrupts are for real-time control. The firmware polled every sensor from one large loop, using a fairly involved retrieval scheme to pull samples from several sensors at once. It worked, but the code was complex and samples were often stale by the time they were read. As I kept working on the firmware, it became clear that if I wanted each sample the moment it was produced, the sensors had to signal the MCU through interrupts. MARV V2 uses data-ready interrupts, which removes both bottlenecks."
+    },
+    {
+      "id": "blk_h2power",
+      "type": "heading",
+      "level": 3,
+      "text": "2. A fixed power system"
     },
     {
       "id": "blk_e1elzvs",
       "type": "paragraph",
-      "text": "Secondly, the power system was set in stone. The power system for MARV was built to run off 2S - 4S on the onboard buck. This meant that even during a telemetry only launch, we were forced to use a 2S configuration which increased the complexity of the coupler's power system from a 4S pack to a 5S pack. This is because we had 4 devices and 3 of them were using a 1S config, but MARV needed 2S, so we needed to make an awkward 5 cell pack. To remedy this in MARV V2, we offboarded the 5V conversion to an external power module which we could choose based on the power requirements instead of being tethered to an onboard 2S-4S buck. "
+      "text": "V1's onboard buck converter accepted 2S to 4S, so MARV always needed at least a 2S supply, even on telemetry-only flights. That complicated the coupler's power system: three of our four devices ran on 1S, but MARV needed 2S, so instead of a simple 4S pack we had to build an awkward 5S one. For V2, I moved the 5 V conversion off the board to an external power module, which can be chosen to fit each vehicle's power requirements instead of being tied to an onboard 2S–4S buck."
     },
     {
       "id": "blk_kzjthxk",
       "type": "image",
-      "src": "/coupler-batt.webp",
-      "caption": "Massive and heavy 5S pack integrated into coupler"
+      "src": "assets/coupler-5s-pack.webp",
+      "alt": "Large 5S battery pack being integrated into the rocket's coupler sled",
+      "caption": "The bulky, heavy 5S pack integrated into the coupler"
     },
     {
       "id": "blk_fsd5uvs",
       "type": "image",
-      "src": "/coupler-batt-4s.webp",
-      "caption": "Would-be 4S pack"
+      "src": "assets/coupler-4s-pack.webp",
+      "alt": "Coupler bulkhead with avionics wired to a smaller battery enclosure",
+      "caption": "The simpler 4S pack we could have used instead"
+    },
+    {
+      "id": "blk_h3ldo",
+      "type": "heading",
+      "level": 3,
+      "text": "3. An overheating LDO"
     },
     {
       "id": "blk_dmcpork",
       "type": "paragraph",
-      "text": "Lastly, the LDO was overheating. We're not exactly sure why this was a problem since it hadn't surfaced sooner, but it was shutting down the MCU since the LDO was durectly under it, so it had to be fixed. My assumption is the external draw from the other sensors connected to the external IO was too much for the AMS1117, so to fix this I added a 5v - 3.3v buck, and made sure the onboard sensors had a separate LDO to draw their current from. "
+      "text": "During the season, the AMS1117 LDO started overheating. Because it sat directly beneath the MCU, the heat was enough to shut the MCU down. We never pinned down why the problem surfaced so late, but my best explanation is that the sensors on the external I/O were drawing more current than the AMS1117 could handle. V2 replaces it with a 5 V to 3.3 V buck converter and gives the onboard sensors their own dedicated LDO."
+    },
+    {
+      "id": "blk_h4other",
+      "type": "heading",
+      "level": 2,
+      "text": "Other improvements"
     },
     {
       "id": "blk_ngrwzja",
-      "type": "paragraph",
-      "text": "There were a few other quality improvements made such as closely following datasheets for routing of MCU power. The RP2350A/B have a very particular way they need their 1.7v regulator set up. We made the new design single sided placement, so the manufacturing costs would be lower. The sensors were updated to more rocketry oriented sensors and more recent sensors. The external I/O was made easier to access by using 2.54mm pins instead of the small solder pads on MARV V1. MARV V2 implements a 4-bit SD card interface through PIO. This gives us the benefit of higher SD card throughput all while keeping SD card communication independent of sensor SPI traffic, and preserving the two hardware SPI controllers for our IMU's. "
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**MCU power by the datasheet.** The RP2350 is particular about how its core-voltage regulator is set up, so V2 follows the datasheet's power routing closely.",
+        "**Single-sided assembly.** All components sit on one side of the board, which lowers manufacturing cost.",
+        "**Newer, rocketry-oriented sensors.** An ICM-45686 IMU, an ADXL375 ±200 g accelerometer and a BMP581 barometer.",
+        "**Easier external I/O.** Standard 2.54 mm headers replace V1's small solder pads.",
+        "**4-bit SD card over PIO.** Higher SD throughput, SD traffic kept independent of sensor SPI traffic, and both hardware SPI controllers left free for the IMUs."
+      ]
     },
     {
       "id": "blk_n50qih9",
       "type": "paragraph",
-      "text": " The power system was simulated using ngspice to ensure proper functionality and bench testing during MARV V2 is being conducted much more thoroughly to target and catch sensor configuration mishaps before they become permanent on the PCB. "
+      "text": "I simulated the power system in ngspice to confirm it works as intended, and bench testing for V2 is much more thorough than it was for V1. The goal is to catch sensor configuration mistakes before they're committed to the PCB."
     },
     {
       "id": "blk_tpypvwg",
       "type": "image",
-      "src": "/marv-v2-breadboards.webp",
-      "caption": "MARV V2 breadboard prototyping"
+      "src": "assets/marv-v2-breadboards.webp",
+      "alt": "Breadboards wired with a Raspberry Pi Pico, sensor breakouts and a logic analyzer",
+      "caption": "Breadboard prototyping for MARV V2"
+    },
+    {
+      "id": "blk_h5mf",
+      "type": "heading",
+      "level": 2,
+      "text": "Learning from a similar design"
     },
     {
       "id": "blk_pcmbq8r",
       "type": "paragraph",
-      "text": "After doing some through research, I found that on tindie, a maker named madflight based in switzerland made a flight controller with similar specs and design decisions. The price was reasonable, so i purchased a unit to see what kind of shortcomings i would run into with a design so close to mine. "
+      "text": "While researching, I came across the FC3V2 on Tindie, a flight controller from madflight, a maker based in Switzerland. Its specs and design decisions are very close to MARV's, and it was reasonably priced, so I bought one to see what shortcomings a design this similar would run into."
     },
     {
       "id": "blk_gognxor",
       "type": "image",
-      "src": "/marv-vs-mf-front.webp",
-      "caption": "Front side MARV V1 vs MadFlight FC3V2 rev C "
+      "src": "assets/marv-v1-vs-fc3v2-front.webp",
+      "alt": "MARV V1 and the madflight FC3V2 side by side, top side up",
+      "caption": "Top side: MARV V1 (left) and the madflight FC3V2 Rev C (right)"
     },
     {
       "id": "blk_76ieuzy",
       "type": "image",
-      "src": "/marv-vs-mf-back.webp",
-      "caption": "Back side MARV V1 vs MadFlight FC3V2 rev C "
+      "src": "assets/marv-v1-vs-fc3v2-back.webp",
+      "alt": "MARV V1 and the madflight FC3V2 side by side, bottom side up",
+      "caption": "Bottom side: MARV V1 (left) and the madflight FC3V2 Rev C (right)"
     },
     {
       "id": "blk_acwrmfb",
       "type": "paragraph",
-      "text": "After carefully evaluating the FC3V2 rev C PCB, I made some improvements to our PCB. First, we kept some of the things that worked for us on MARV V1, such as the latched SD slot, the external compass, and external GPS and the ESC pad line. Then we removed the large via stitched pads of the FC3V2 rev C since we wouldn't be connecting the FC directly to the battery in either scenario. We would either be getting power from an ESC pad row when connecting to a quad, or conneted to a boost buck on a 1S config. This still requires more thought but for now this is the power config. We kept the expandable PSRAM slot since during the firware experimentation I was able to boost performance greatly by loading the entire firmware into PSRAM instead of flash storage.  "
+      "text": "After evaluating the FC3V2, I made a few changes to our board. I kept what worked well on MARV V1: the latching SD card slot, support for an external compass and GPS, and the ESC pad row. I left out the FC3V2's large via-stitched battery pads, since MARV won't connect directly to a battery in either of our setups. It will be powered either from the ESC pad row when mounted on a quadcopter, or from a boost-buck converter on a 1S pack. That power configuration may still change, but it's the plan for now. MARV V2 also keeps an expandable PSRAM footprint: during firmware experiments, running the entire firmware from PSRAM instead of flash improved performance significantly."
+    },
+    {
+      "id": "blk_h6board",
+      "type": "heading",
+      "level": 2,
+      "text": "The V2 board"
     },
     {
       "id": "blk_0jgzvzh",
       "type": "image",
-      "src": "/screenshot-from-2026-10-09-10-40-08.webp"
+      "src": "assets/marv-v2-pcb-top.webp",
+      "alt": "3D render of the MARV V2 PCB, top side, showing the MCU, SD card slot, USB-C port and pin headers",
+      "caption": "MARV V2 PCB render, top side"
     },
     {
       "id": "blk_41gky7d",
       "type": "image",
-      "src": "/screenshot-from-2026-10-09-13-35-19.webp"
+      "src": "assets/marv-v2-pcb-bottom.webp",
+      "alt": "3D render of the MARV V2 PCB, bottom side, with the sensor table and ESC pad row",
+      "caption": "MARV V2 PCB render, bottom side"
     },
     {
       "id": "blk_7r1b96k",
       "type": "paragraph",
-      "text": "Only a few modifications remain before manufacturing. I hope you found this useful, and thank you for reading!"
+      "text": "Only a few changes remain before MARV V2 goes to manufacturing. Thanks for reading, and I hope you found it useful!"
     }
   ]
 }

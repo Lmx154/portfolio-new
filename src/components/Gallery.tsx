@@ -14,7 +14,7 @@ const Gallery = () => {
 
         <div className="mb-12 max-w-3xl">
           <p className="text-neutral-400 font-light leading-relaxed text-[15px]">
-            As Avionics Lead for the UTRGV Rocket Launchers Club, I actively participate in aerospace competitions, hackathons, and educational events. These experiences have shaped my technical skills while fostering collaboration and innovation within the aerospace community.
+            As Avionics Lead for Rocket Launchers at UTRGV, I took part in rocketry competitions, design reviews, hackathons and industry visits. These experiences sharpened my technical skills and taught me how to lead and collaborate across a multidisciplinary team.
           </p>
         </div>
 

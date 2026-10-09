@@ -4,7 +4,7 @@
   "title": "Jobtron",
   "status": "Completed",
   "order": 60,
-  "image": "/screenshot-from-2026-10-09-09-50-30.webp",
+  "image": "",
   "model3d": "",
   "media": [],
   "description": "MCP server + Web app that allows users to autofill online job applications by extracting application information and using AI agents to fill them with resume information. Streamlines the job application process significantly.",

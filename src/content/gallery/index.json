@@ -1,81 +1,88 @@
 {
   "items": [
     {
-      "id": "ff1d3762-3922-4e34-8638-df2d1ff3156e",
-      "src": "/pdr.webp",
-      "alt": "",
-      "title": "PDR",
-      "description": "Presenting avionics as the avionics lead at the preliminary design review"
-    },
-    {
       "id": "928b6c8a-4847-4039-ad80-2c8164637a66",
       "src": "/IREC2026.jpeg",
-      "alt": "IREC 2026 Team Photo",
+      "alt": "IREC 2026 team photo with ITZAMNA",
       "title": "IREC 2026",
-      "description": "Team picture with ITZAMNA, our rocket for IREC 2026"
+      "description": "The team with ITZAMNA, our rocket for IREC 2026"
     },
     {
       "id": "02ebb140-8d4a-49b1-ade8-d44c1216c02f",
       "src": "/lsc-2026-team.webp",
-      "alt": "",
+      "alt": "Rocket Launchers team holding the rocket at Lone Star 2026",
       "title": "Lone Star 2026",
-      "description": "Lone Star 2026 team pic"
+      "description": "The Rocket Launchers team at the Lone Star Cup"
+    },
+    {
+      "id": "93b4e1ad-8939-46be-ba9f-cb013e12efdc",
+      "src": "/lsc-2026-2.webp",
+      "alt": "",
+      "title": "Itzamna Launch",
+      "description": "Itzamna ripping through the sky at Lone Star 2026"
     },
     {
       "id": "17883f84-aeff-4eeb-9bbb-38ffcf51a849",
       "src": "/lsc-2026-1.webp",
-      "alt": "",
-      "title": "Lone Star 2026",
-      "description": "Avionics team at Lone Star 2026"
+      "alt": "Avionics team members preparing hardware at Lone Star 2026",
+      "title": "Lone Star 2026: Avionics",
+      "description": "The avionics team getting hardware ready for launch"
+    },
+    {
+      "id": "ff1d3762-3922-4e34-8638-df2d1ff3156e",
+      "src": "/pdr.webp",
+      "alt": "Luis presenting avionics at the preliminary design review",
+      "title": "Preliminary Design Review",
+      "description": "Presenting the avionics design as Avionics Lead"
     },
     {
       "id": "238fc8bd-cc79-48c3-9233-7923987589f1",
       "src": "/pdr-team.webp",
-      "alt": "",
-      "title": "PDR",
-      "description": "The Rocket Launchers 2026 team at the preliminary design review"
+      "alt": "Rocket Launchers 2026 team at the preliminary design review",
+      "title": "Preliminary Design Review",
+      "description": "The Rocket Launchers 2026 team after the review"
     },
     {
       "id": 5,
       "src": "/disparado-irec.png",
       "alt": "Disparado at IREC in Midland, TX",
       "title": "Disparado at IREC 2025",
-      "description": "Picture of Disparado at IREC 2025"
-    },
-    {
-      "id": 6,
-      "src": "/starbase.jpg",
-      "alt": "SpaceX Starbase Visit",
-      "title": "SpaceX Starbase Visit",
-      "description": "Educational visit to SpaceX facilities"
-    },
-    {
-      "id": 1,
-      "src": "/avionics.jpg",
-      "alt": "2024-2025 Avionics Team",
-      "title": "2024-2025 Avionics Team",
-      "description": "Team picture of the 2024-2025 avionics team with Disparado "
-    },
-    {
-      "id": 4,
-      "src": "/lonestar2025.jpg",
-      "alt": "Lone Star 2025",
-      "title": "Lone Star 2025",
-      "description": "Rocket competition event"
+      "description": "Disparado at the IREC 2025 launch site in Midland, TX"
     },
     {
       "id": 2,
       "src": "/lonestar-rocket.JPG",
       "alt": "Disparado Launch at Lone Star 2025",
       "title": "Disparado Launch",
-      "description": "Picture of Disparado launching at Lone Star 2025"
+      "description": "Disparado lifting off at Lone Star 2025"
+    },
+    {
+      "id": 4,
+      "src": "/lonestar2025.jpg",
+      "alt": "Lone Star 2025",
+      "title": "Lone Star 2025",
+      "description": "Competing at the Lone Star Cup"
+    },
+    {
+      "id": 1,
+      "src": "/avionics.jpg",
+      "alt": "2024-2025 Avionics Team",
+      "title": "2024–2025 Avionics Team",
+      "description": "The 2024–2025 avionics team with Disparado"
+    },
+    {
+      "id": 6,
+      "src": "/starbase.jpg",
+      "alt": "SpaceX Starbase Visit",
+      "title": "SpaceX Starbase Visit",
+      "description": "A visit to SpaceX's Starbase facility"
     },
     {
       "id": 3,
       "src": "/fronterahacks2024.JPG",
       "alt": "Frontera Hacks 2024",
       "title": "Frontera Hacks 2024",
-      "description": "Participating in the annual hackathon at UTRGV"
+      "description": "Competing in UTRGV's annual hackathon"
     }
   ]
 }

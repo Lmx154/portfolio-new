@@ -3,10 +3,10 @@
   "profileImage": "/profile.jpg",
   "profileAlt": "Luis Martinez",
   "paragraphs": [
-    "Hello! I'm Luis Martinez, a passionate software developer based in Weslaco, Texas, recently completed a Bachelor's degree in Computer Science at the University of Texas Rio Grande Valley (UTRGV). My journey into technology began at a young age, driven by a passion for problem-solving and creativity.",
-    "My first experiences with programming involved modding games and building simple websites, sparking a lifelong interest in tech. Before transferring to UTRGV, I earned an Associate's degree in Computer Science from South Texas College and gained hands-on experience in IT for approximately two years.",
-    "At UTRGV, I served as the Avionics Lead for the Rocket Launchers Club, where I spearhead the development of advanced telemetry systems and flight computers for aerospace projects. I frequently attend hackathons, where I enjoy tackling challenges, learning from peers, and networking with other passionate developers. I'm passionate about continuous learning and innovation, always exploring emerging technologies and integrating them into my projects.",
-    "Post graduation I continue my passion of developing flight control systems and advanced localization projects in robotics. This website documents many of the difficulties and successes I had on my journey. "
+    "I'm Luis Martinez, an avionics and software engineer based in Weslaco, Texas. I build flight software, embedded hardware, and the guidance, navigation and control systems that tie them together. I hold a B.S. in Computer Science from the University of Texas Rio Grande Valley (UTRGV).",
+    "I got into programming by modding games and building simple websites, and that curiosity never left. Before UTRGV, I earned an Associate's degree in Computer Science from South Texas College and worked as an IT analyst, supporting networks, hardware and backups for small businesses.",
+    "From 2024 to 2026 I was the Avionics Lead for Rocket Launchers at UTRGV, leading the team's flight software, embedded hardware, telemetry and integration work. I developed the MARV flight computer, worked with the structures, propulsion and recovery leads to bring our avionics to flight readiness, and took our systems to competitions including Lone Star and IREC. Along the way I competed in hackathons and made a habit of learning by building.",
+    "Today I'm focused on flight control systems and localization for robotics, including the next revision of MARV. This site documents that work: the setbacks as much as the successes."
   ],
   "traits": [
     {
@@ -29,8 +29,8 @@
     "title": "EDUCATION",
     "items": [
       "B.S. Computer Science",
-      "UT Rio Grande Valley",
-      "Associate's - South Texas College"
+      "UT Rio Grande Valley, 2026",
+      "Associate's, South Texas College"
     ]
   },
   "focus": {
