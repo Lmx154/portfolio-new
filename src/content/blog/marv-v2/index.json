@@ -2,7 +2,8 @@
   "type": "blog",
   "id": "marv-v2",
   "title": "MARV V2",
-  "status": "draft",
+  "status": "published",
+  "date": "2026-09-19",
   "excerpt": "My iteration on MARV ",
   "readTime": "",
   "tags": [
