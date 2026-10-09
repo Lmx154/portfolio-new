@@ -5,7 +5,16 @@
   "status": "Completed",
   "order": 10,
   "image": "/rocketGame.png",
+  "model3d": "",
+  "media": [],
   "description": "A 2D arcade-style rocket game showcasing cross-platform development with Flutter and Dart, featuring a custom ASP.NET Core (C#) backend. Implemented custom API for score submission, deployed on Azure with PostgreSQL on Neon.tech.",
-  "tags": ["Flutter", "Dart", "C#", "ASP.NET", "SQL", "Postgres"],
+  "tags": [
+    "Flutter",
+    "Dart",
+    "C#",
+    "ASP.NET",
+    "SQL",
+    "Postgres"
+  ],
   "github": "https://github.com/Lmx154/dart_demo"
 }

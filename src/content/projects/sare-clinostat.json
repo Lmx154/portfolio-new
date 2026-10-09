@@ -5,7 +5,15 @@
   "status": "Completed",
   "order": 70,
   "image": "/clinostat.png",
+  "model3d": "",
+  "media": [],
   "description": "Led development of a high-precision clinostat control system, integrating Rust, React, and ESP32-based hardware. Selected as a finalist in the 2025 NASA MINDS competition. Architected Tauri 2.0 desktop app for real-time motor control.",
-  "tags": ["Rust", "Tauri", "Tailwind", "JavaScript", "React"],
+  "tags": [
+    "Rust",
+    "Tauri",
+    "Tailwind",
+    "JavaScript",
+    "React"
+  ],
   "github": "https://github.com/Lmx154/clinostat"
 }

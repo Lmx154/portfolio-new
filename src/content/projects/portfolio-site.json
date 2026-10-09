@@ -5,8 +5,15 @@
   "status": "Completed",
   "order": 30,
   "image": "/portfolio.png",
+  "model3d": "",
+  "media": [],
   "description": "A refresh of my personal portfolio website, emphasizing scalable architecture and modern web development practices. Built with TypeScript and React, styled with Tailwind CSS, hosted on Render.",
-  "tags": ["TypeScript", "React", "Tailwind", "Node.js"],
+  "tags": [
+    "TypeScript",
+    "React",
+    "Tailwind",
+    "Node.js"
+  ],
   "github": "https://github.com/Lmx154/portfolio",
   "deploymentUrl": "https://luisamartinez.xyz/"
 }

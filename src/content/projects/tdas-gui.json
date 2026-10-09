@@ -5,7 +5,15 @@
   "status": "Completed",
   "order": 20,
   "image": "/das-gui.png",
+  "model3d": "",
+  "media": [],
   "description": "Modernized the UTRGV Rocket Launchers telemetry visualization system. Built with Tauri 2.0, utilizing Rust for backend performance and React for frontend. Integrated high-frequency data handling (up to 100Hz).",
-  "tags": ["Rust", "Tauri", "Tailwind", "JavaScript", "React"],
+  "tags": [
+    "Rust",
+    "Tauri",
+    "Tailwind",
+    "JavaScript",
+    "React"
+  ],
   "github": "https://github.com/Lmx154/TDAS-GUI"
 }

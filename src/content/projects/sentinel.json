@@ -5,7 +5,15 @@
   "status": "Completed",
   "order": 40,
   "image": "/sentinel.png",
+  "model3d": "",
+  "media": [],
   "description": "Next-generation rocket telemetry system for UTRGV Rocket Launchers, building on the TDAS-GUI prototype. Implemented real-time 3D rocket orientation tracking and flight trajectory visualization.",
-  "tags": ["Rust", "Tauri", "Tailwind", "JavaScript", "React"],
+  "tags": [
+    "Rust",
+    "Tauri",
+    "Tailwind",
+    "JavaScript",
+    "React"
+  ],
   "github": "https://github.com/andrewalvrz/SENTINEL"
 }

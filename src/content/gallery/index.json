@@ -1,11 +1,39 @@
 {
   "items": [
     {
+      "id": "ff1d3762-3922-4e34-8638-df2d1ff3156e",
+      "src": "/pdr.webp",
+      "alt": "",
+      "title": "PDR",
+      "description": "Presenting avionics as the avionics lead at the preliminary design review"
+    },
+    {
       "id": "928b6c8a-4847-4039-ad80-2c8164637a66",
       "src": "/IREC2026.jpeg",
       "alt": "IREC 2026 Team Photo",
       "title": "IREC 2026",
       "description": "Team picture with ITZAMNA, our rocket for IREC 2026"
+    },
+    {
+      "id": "02ebb140-8d4a-49b1-ade8-d44c1216c02f",
+      "src": "/lsc-2026-team.webp",
+      "alt": "",
+      "title": "Lone Star 2026",
+      "description": "Lone Star 2026 team pic"
+    },
+    {
+      "id": "17883f84-aeff-4eeb-9bbb-38ffcf51a849",
+      "src": "/lsc-2026-1.webp",
+      "alt": "",
+      "title": "Lone Star 2026",
+      "description": "Avionics team at Lone Star 2026"
+    },
+    {
+      "id": "238fc8bd-cc79-48c3-9233-7923987589f1",
+      "src": "/pdr-team.webp",
+      "alt": "",
+      "title": "PDR",
+      "description": "The Rocket Launchers 2026 team at the preliminary design review"
     },
     {
       "id": 5,

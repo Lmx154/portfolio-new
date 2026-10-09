@@ -7,9 +7,23 @@
   "image": "",
   "model3d": "",
   "media": [
-    { "type": "model", "src": "/MARV-FC-PCB.glb", "caption": "MARV flight computer — main PCB" },
-    { "type": "model", "src": "/MARV-RADIO-PCB.glb", "caption": "MARV radio board" }
+    {
+      "type": "model",
+      "src": "/MARV-FC-PCB.glb",
+      "caption": "MARV flight computer — main PCB"
+    },
+    {
+      "type": "model",
+      "src": "/MARV-RADIO-PCB.glb",
+      "caption": "MARV radio board"
+    }
   ],
-  "description": "Modular Avionics for Rockets and Vehicles — the next-generation flight computer for the UTRGV Rocket Launchers, succeeding Brunito. A dual-core RP2350 platform with a Rust (RTIC) firmware stack and a custom sensor suite. Drag to explore the boards in 3D; use the arrows to switch boards.",
-  "tags": ["Rust", "Embedded", "RP2350", "PCB", "RTIC", "Avionics"]
+  "description": "Modular Avionics for Rockets and Vehicles — the next-generation flight computer for the UTRGV Rocket Launchers, succeeding Brunito. A dual-core RP2350 platform with a Rust firmware stack and a custom sensor suite. Drag to explore the boards in 3D; use the arrows to switch boards.",
+  "tags": [
+    "Rust",
+    "Embedded",
+    "RP2350",
+    "PCB",
+    "Avionics"
+  ]
 }

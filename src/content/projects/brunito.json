@@ -5,6 +5,12 @@
   "status": "Completed",
   "order": 50,
   "image": "/brunito.jpg",
+  "model3d": "",
+  "media": [],
   "description": "Comprehensive multi-board flight computer system and ground station for advanced rocketry telemetry. Implemented dual-board architecture with multiple sensors and real-time communication protocols using LoRa radio.",
-  "tags": ["C++", "Embedded", "RTOS"]
+  "tags": [
+    "C++",
+    "Embedded",
+    "RTOS"
+  ]
 }

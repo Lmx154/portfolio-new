@@ -1,0 +1,108 @@
+{
+  "type": "blog",
+  "id": "marv-v2",
+  "title": "MARV V2",
+  "status": "draft",
+  "excerpt": "My iteration on MARV ",
+  "readTime": "",
+  "tags": [
+    "Iterating",
+    "Engineering",
+    "PCB Design",
+    "Firmware Design"
+  ],
+  "coverImage": "/screenshot-from-2026-10-09-10-40-08.webp",
+  "blocks": [
+    {
+      "id": "blk_s13gzck",
+      "type": "heading",
+      "level": 2,
+      "text": "The icentive to improve"
+    },
+    {
+      "id": "blk_jxctzys",
+      "type": "paragraph",
+      "text": "After receiving MARV V1 and working with it for the IREC 2026 season, there were a lot of things that stuck out and needed to be fixed. These fixes fell within several domains and affected the performance and functionality of the system greatly so they were improvements that absolutely had to be made. "
+    },
+    {
+      "id": "blk_ulgineg",
+      "type": "paragraph",
+      "text": "Firstly, the interrupts were missing. At the time of MARV's creation, I didn't have a firm understanding of why data ready interrupts were so critical to realtime control systems. After continuing my work on MARV's firmware I discovered that interrupts were essential if I wanted my sensor samples to arrive the moment they were created. Before this I was using one big loop and a much more complex data retrieval system to draw samples from many sensors at once. The drawback here was the complexity of the code and stale data. For MARV V2, using interrupts allowed us to get rid of these bottlenecks."
+    },
+    {
+      "id": "blk_e1elzvs",
+      "type": "paragraph",
+      "text": "Secondly, the power system was set in stone. The power system for MARV was built to run off 2S - 4S on the onboard buck. This meant that even during a telemetry only launch, we were forced to use a 2S configuration which increased the complexity of the coupler's power system from a 4S pack to a 5S pack. This is because we had 4 devices and 3 of them were using a 1S config, but MARV needed 2S, so we needed to make an awkward 5 cell pack. To remedy this in MARV V2, we offboarded the 5V conversion to an external power module which we could choose based on the power requirements instead of being tethered to an onboard 2S-4S buck. "
+    },
+    {
+      "id": "blk_kzjthxk",
+      "type": "image",
+      "src": "/coupler-batt.webp",
+      "caption": "Massive and heavy 5S pack integrated into coupler"
+    },
+    {
+      "id": "blk_fsd5uvs",
+      "type": "image",
+      "src": "/coupler-batt-4s.webp",
+      "caption": "Would-be 4S pack"
+    },
+    {
+      "id": "blk_dmcpork",
+      "type": "paragraph",
+      "text": "Lastly, the LDO was overheating. We're not exactly sure why this was a problem since it hadn't surfaced sooner, but it was shutting down the MCU since the LDO was durectly under it, so it had to be fixed. My assumption is the external draw from the other sensors connected to the external IO was too much for the AMS1117, so to fix this I added a 5v - 3.3v buck, and made sure the onboard sensors had a separate LDO to draw their current from. "
+    },
+    {
+      "id": "blk_ngrwzja",
+      "type": "paragraph",
+      "text": "There were a few other quality improvements made such as closely following datasheets for routing of MCU power. The RP2350A/B have a very particular way they need their 1.7v regulator set up. We made the new design single sided placement, so the manufacturing costs would be lower. The sensors were updated to more rocketry oriented sensors and more recent sensors. The external I/O was made easier to access by using 2.54mm pins instead of the small solder pads on MARV V1. MARV V2 implements a 4-bit SD card interface through PIO. This gives us the benefit of higher SD card throughput all while keeping SD card communication independent of sensor SPI traffic, and preserving the two hardware SPI controllers for our IMU's. "
+    },
+    {
+      "id": "blk_n50qih9",
+      "type": "paragraph",
+      "text": " The power system was simulated using ngspice to ensure proper functionality and bench testing during MARV V2 is being conducted much more thoroughly to target and catch sensor configuration mishaps before they become permanent on the PCB. "
+    },
+    {
+      "id": "blk_tpypvwg",
+      "type": "image",
+      "src": "/marv-v2-breadboards.webp",
+      "caption": "MARV V2 breadboard prototyping"
+    },
+    {
+      "id": "blk_pcmbq8r",
+      "type": "paragraph",
+      "text": "After doing some through research, I found that on tindie, a maker named madflight based in switzerland made a flight controller with similar specs and design decisions. The price was reasonable, so i purchased a unit to see what kind of shortcomings i would run into with a design so close to mine. "
+    },
+    {
+      "id": "blk_gognxor",
+      "type": "image",
+      "src": "/marv-vs-mf-front.webp",
+      "caption": "Front side MARV V1 vs MadFlight FC3V2 rev C "
+    },
+    {
+      "id": "blk_76ieuzy",
+      "type": "image",
+      "src": "/marv-vs-mf-back.webp",
+      "caption": "Back side MARV V1 vs MadFlight FC3V2 rev C "
+    },
+    {
+      "id": "blk_acwrmfb",
+      "type": "paragraph",
+      "text": "After carefully evaluating the FC3V2 rev C PCB, I made some improvements to our PCB. First, we kept some of the things that worked for us on MARV V1, such as the latched SD slot, the external compass, and external GPS and the ESC pad line. Then we removed the large via stitched pads of the FC3V2 rev C since we wouldn't be connecting the FC directly to the battery in either scenario. We would either be getting power from an ESC pad row when connecting to a quad, or conneted to a boost buck on a 1S config. This still requires more thought but for now this is the power config. We kept the expandable PSRAM slot since during the firware experimentation I was able to boost performance greatly by loading the entire firmware into PSRAM instead of flash storage.  "
+    },
+    {
+      "id": "blk_0jgzvzh",
+      "type": "image",
+      "src": "/screenshot-from-2026-10-09-10-40-08.webp"
+    },
+    {
+      "id": "blk_41gky7d",
+      "type": "image",
+      "src": "/screenshot-from-2026-10-09-13-35-19.webp"
+    },
+    {
+      "id": "blk_7r1b96k",
+      "type": "paragraph",
+      "text": "Only a few modifications remain before manufacturing. I hope you found this useful, and thank you for reading!"
+    }
+  ]
+}
