@@ -27,8 +27,19 @@ const ClickableImage: React.FC<ClickableImageProps> = ({
     <img
       src={src}
       alt={alt}
-      className={`cursor-pointer ${className}`}
+      loading="lazy"
+      decoding="async"
+      className={`cursor-zoom-in ${className}`}
       onClick={handleClick}
+      role="button"
+      tabIndex={0}
+      aria-label={alt ? `Open image: ${alt}` : 'Open image'}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
     />
   );
 };

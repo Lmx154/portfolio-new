@@ -17,6 +17,94 @@
   }
 }
 
+/* Keyboard focus ring */
+:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.75);
+  outline-offset: 2px;
+}
+
+/* ── Mission-control design system ─────────────────────────────────────── */
+@layer components {
+  /* Frosted instrument panel: keeps text legible over the nebula field. */
+  .glass {
+    background: rgba(6, 8, 12, 0.66);
+    -webkit-backdrop-filter: blur(14px) saturate(115%);
+    backdrop-filter: blur(14px) saturate(115%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Small monospace telemetry label (dates, status, counts, meta). */
+  .label-mono {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgb(163 163 163);
+  }
+
+  /* HUD reticle: four corner brackets that lock on when the element is hovered
+     or keyboard-focused. Put `hud` on a positioned element. */
+  .hud {
+    position: relative;
+  }
+  .hud::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(1.015);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    --c: rgba(103, 232, 249, 0.8);
+    --l: 14px;
+    background:
+      linear-gradient(var(--c), var(--c)) top left / var(--l) 1px,
+      linear-gradient(var(--c), var(--c)) top left / 1px var(--l),
+      linear-gradient(var(--c), var(--c)) top right / var(--l) 1px,
+      linear-gradient(var(--c), var(--c)) top right / 1px var(--l),
+      linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1px,
+      linear-gradient(var(--c), var(--c)) bottom left / 1px var(--l),
+      linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1px,
+      linear-gradient(var(--c), var(--c)) bottom right / 1px var(--l);
+    background-repeat: no-repeat;
+  }
+  .hud:hover::after,
+  .hud:focus-within::after {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@layer utilities {
+  /* Soft dark halo so copy stays readable where it crosses bright nebulae. */
+  .text-legible {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 18px rgba(0, 0, 0, 0.75);
+  }
+}
+
+/* Live indicator dot (e.g. "In progress"). */
+@keyframes signal-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.signal-pulse {
+  animation: signal-pulse 2.4s ease-in-out infinite;
+}
+
+/* Route fade-in. Opacity only (no transform) so ancestors never become a
+   containing block for the fixed header. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.page-in {
+  animation: fade-in 0.4s ease-out both;
+}
+
 /* Sleek, minimal dark scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
@@ -26,11 +114,18 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-  border: 2px solid #000;
+  background: rgba(255, 255, 255, 0.12);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.24);
+  background-clip: padding-box;
+}
+html {
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+  scrollbar-width: thin;
 }
 
 /* Subtle pulse for the resume button */
@@ -42,5 +137,19 @@
   50% {
     border-color: rgba(255, 255, 255, 0.4);
     box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

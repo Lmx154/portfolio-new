@@ -1,5 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { mediaUrl } from '../api';
+import { BLOG_REL, mediaUrl } from '../api';
+import { useAssetPicker, type PickFilter } from './AssetPicker';
+import ImageCropper from './ImageCropper';
+import ModelPreview from './LazyModelPreview';
 
 /** Shared form-field primitives used across every content editor. */
 
@@ -44,6 +47,27 @@ export function TextArea({
         onChange={(e) => onChange?.(e.target.value)}
       />
     </Field>
+  );
+}
+
+/** A labeled on/off toggle — clearer than a checkbox for prominent booleans
+ *  (homepage visibility, "featured", etc.). Reuses the .switch visual. */
+export function Switch({
+  label, checked, onChange,
+}: {
+  label: string; checked: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="switch-field"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+    >
+      <span className={`switch ${checked ? 'on' : ''}`}><span className="knob" /></span>
+      <span className="sf-label">{label}</span>
+    </button>
   );
 }
 
@@ -119,23 +143,68 @@ export function ItemToolbar({
   );
 }
 
-/** Image/video field with a live preview (Tauri asset protocol) and import button. */
+/** Maps a field's `kind` to what the asset picker should show. */
+function pickFilterFor(kind: ImageFieldKind, post?: string): PickFilter {
+  switch (kind) {
+    case 'file': return { exts: ['pdf'], title: 'Choose a PDF', post };
+    case 'model': return { kinds: ['model'], title: 'Choose a 3D model', post };
+    case 'video': return { kinds: ['video'], title: 'Choose a video', post };
+    case 'media': return { kinds: ['image', 'video'], title: 'Choose an image or video', post };
+    default: return { kinds: ['image'], title: 'Choose an image', post };
+  }
+}
+
+type ImageFieldKind = 'image' | 'video' | 'media' | 'model' | 'file';
+
+/** Slug of the blog post a `baseDir` ("src/content/blog/<slug>") points into. */
+function postSlugOf(baseDir?: string): string | undefined {
+  const prefix = BLOG_REL + '/';
+  return baseDir && baseDir.startsWith(prefix) ? baseDir.slice(prefix.length).split('/')[0] || undefined : undefined;
+}
+
+const isExternalRef = (s: string) => /^(?:[a-z]+:)?\/\//i.test(s) || s.startsWith('data:');
+
+/**
+ * Asset field with a live preview. "Choose…" browses files already in the repo
+ * (a blog post's own assets when `baseDir` is a post folder, otherwise public/);
+ * "Import…" (when `onImport` is given) brings in a new file from disk; "Crop…"
+ * writes a cropped copy next to the source.
+ */
 export function ImageField({
-  label, root, value, baseDir, onChange, onImport, kind = 'image',
+  label, root, value, baseDir, onChange, onImport, kind = 'image', aspect,
 }: {
   label?: string;
   root: string;
   value: string;
+  /** Folder (relative to root) that a relative `value` resolves against, e.g. a blog post. */
   baseDir?: string;
   onChange: (src: string) => void;
-  onImport: () => Promise<string | null>;
-  kind?: 'image' | 'media';
+  /** Optional: pick a file from disk and return the reference to store. */
+  onImport?: () => Promise<string | null>;
+  kind?: ImageFieldKind;
+  /** Display aspect ratio (w/h) of where this image is shown. When set, the crop
+   *  tool locks the selection to it so the result fills its box with no cutoff. */
+  aspect?: number;
 }) {
+  const { pickAsset } = useAssetPicker();
   const [busy, setBusy] = useState(false);
+  const [cropping, setCropping] = useState(false);
   const url = mediaUrl(root, value, baseDir);
   const isVideo = /\.(mp4|webm|ogv|mov)$/i.test(value);
+  const isModel = kind === 'model' || /\.(glb|gltf|obj)$/i.test(value);
+  const valExt = (value.split('.').pop() || '').toLowerCase();
+  const post = postSlugOf(baseDir);
+  // Crop only applies to local raster images whose path resolves on disk.
+  const canCrop = !!value && !isVideo && !isModel && !isExternalRef(value) && valExt !== 'svg'
+    && (value.startsWith('/') || !!baseDir);
+
+  async function choose() {
+    const ref = await pickAsset(pickFilterFor(kind, post));
+    if (ref) onChange(ref);
+  }
 
   async function doImport() {
+    if (!onImport) return;
     setBusy(true);
     try {
       const src = await onImport();
@@ -150,9 +219,11 @@ export function ImageField({
       <div className="media-field">
         <div className="media-preview">
           {url ? (
-            isVideo ? <video src={url} controls muted /> : <img src={url} alt="" />
+            isModel ? <ModelPreview url={url} ext={valExt} className="asset-3d" /> :
+            isVideo ? <video src={url} controls muted /> :
+            <img src={url} alt="" />
           ) : (
-            <div className="media-empty">no media</div>
+            <div className="media-empty">{isModel ? 'no model' : 'no media'}</div>
           )}
         </div>
         <div className="media-controls">
@@ -162,11 +233,23 @@ export function ImageField({
             onChange={(e) => onChange(e.target.value)}
           />
           <div className="row">
-            <button className="small" disabled={busy} onClick={doImport}>{busy ? 'Importing…' : 'Import…'}</button>
+            <button className="small" onClick={choose}>Choose…</button>
+            {onImport && <button className="small ghost" disabled={busy} onClick={doImport}>{busy ? 'Importing…' : 'Import…'}</button>}
+            {canCrop && <button className="small ghost" onClick={() => setCropping(true)}>Crop…</button>}
             {value && <button className="small ghost" onClick={() => onChange('')}>Clear</button>}
           </div>
         </div>
       </div>
+      {cropping && (
+        <ImageCropper
+          root={root}
+          src={value}
+          baseDir={baseDir}
+          aspect={aspect}
+          onCancel={() => setCropping(false)}
+          onDone={(path) => { onChange(path); setCropping(false); }}
+        />
+      )}
     </Field>
   );
 }

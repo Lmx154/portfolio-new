@@ -1,19 +1,28 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import HomePage from './components/HomePage';
-import BlogPost from './components/BlogPost';
 import SpaceBackground from './components/SpaceBackgroundLazy';
 import Header from './components/Header';
+import NotFound from './components/NotFound';
 import { ImageModalProvider } from './components/ImageModalProvider';
 import { isSpacelab } from './space/isSpacelab';
 
+const BlogPost = lazy(() => import('./components/BlogPost'));
+
 // Component to handle scroll restoration
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
 
   useEffect(() => {
+    if (hash) {
+      const target = document.getElementById(hash.slice(1));
+      if (target) {
+        target.scrollIntoView({ behavior: 'auto' });
+        return;
+      }
+    }
     window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [pathname]);
+  }, [pathname, hash]);
 
   return null;
 }
@@ -73,6 +82,34 @@ function SpacelabPage() {
   return <div ref={ref} className="min-h-screen bg-black text-white" />;
 }
 
+/**
+ * Routed pages, each fading in on navigation. The wrapper is keyed by pathname
+ * so React remounts it per route, replaying the opacity animation. Opacity only
+ * (no transform) so the fixed header is unaffected; the persistent starfield
+ * lives outside this subtree.
+ */
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <div key={location.pathname} className="page-in">
+      <Routes location={location}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/blog/:id" element={
+          <div className="relative">
+            <div className="relative z-10">
+              <Header />
+              <Suspense fallback={null}>
+                <BlogPost />
+              </Suspense>
+            </div>
+          </div>
+        } />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </div>
+  );
+}
+
 function App() {
   if (isSpacelab()) return <SpacelabPage />;
 
@@ -82,17 +119,7 @@ function App() {
         <ScrollToTop />
         <div className="min-h-screen bg-black text-white relative">
           <PersistentBackground />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/blog/:id" element={
-              <div className="relative">
-                <div className="relative z-10">
-                  <Header />
-                  <BlogPost />
-                </div>
-              </div>
-            } />
-          </Routes>
+          <AnimatedRoutes />
         </div>
       </ImageModalProvider>
     </Router>

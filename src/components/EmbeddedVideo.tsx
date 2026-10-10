@@ -44,6 +44,7 @@ const EmbeddedVideo: React.FC<EmbeddedVideoProps> = ({
           height={height}
           src={embedSrc}
           title={title}
+          loading="lazy"
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen

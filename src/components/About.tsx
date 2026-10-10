@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import ClickableImage from './ClickableImage';
+import SectionHeading from './SectionHeading';
 import { about } from '../data/about';
+import { site } from '../data/site';
 
 // Icon registry: content stores an icon *name*; the SVG markup (design) lives
 // here. Names must match TRAIT_ICON_NAMES in the shared schema.
@@ -28,34 +30,45 @@ const About = () => {
   return (
     <section id="about" className="py-24">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center gap-6 mb-14">
-          <h2 className="font-display text-3xl md:text-4xl font-light tracking-[0.12em] text-white whitespace-nowrap">
-            {about.sectionTitle}
-          </h2>
-          <div className="h-px flex-1 bg-white/10" />
-        </div>
+        <SectionHeading index="03" title={about.sectionTitle} className="mb-12" />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
           {/* Left: photo + personality traits */}
           <div className="lg:col-span-4">
             <div className="max-w-[300px] mx-auto lg:mx-0">
-              <div className="w-full aspect-[4/5] bg-neutral-950 border border-white/10 overflow-hidden">
-                <ClickableImage
-                  src={about.profileImage}
-                  alt={about.profileAlt}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <figure className="relative group m-1.5">
+                {/* Instrument frame: corner ticks */}
+                <span aria-hidden="true" className="pointer-events-none absolute -top-1.5 -left-1.5 w-3 h-3 border-t border-l border-white/50 transition-colors group-hover:border-signal" />
+                <span aria-hidden="true" className="pointer-events-none absolute -top-1.5 -right-1.5 w-3 h-3 border-t border-r border-white/50 transition-colors group-hover:border-signal" />
+                <span aria-hidden="true" className="pointer-events-none absolute -bottom-1.5 -left-1.5 w-3 h-3 border-b border-l border-white/50 transition-colors group-hover:border-signal" />
+                <span aria-hidden="true" className="pointer-events-none absolute -bottom-1.5 -right-1.5 w-3 h-3 border-b border-r border-white/50 transition-colors group-hover:border-signal" />
+                <div className="w-full aspect-[4/5] bg-neutral-950 border border-white/10 overflow-hidden">
+                  <ClickableImage
+                    src={about.profileImage}
+                    alt={about.profileAlt}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                {(about.profileAlt || site.role) && (
+                  <figcaption className="glass border-t-0 px-3 py-2 label-mono flex flex-col gap-0.5">
+                    {about.profileAlt && <span className="text-white">{about.profileAlt}</span>}
+                    {site.role && <span>{site.role}</span>}
+                  </figcaption>
+                )}
+              </figure>
 
-              <div className="mt-8 space-y-5">
+              <div className="mt-8 space-y-3">
                 {about.traits.map((trait, index) => (
-                  <div key={index} className="flex items-start gap-3.5">
-                    <div className="bg-white/5 border border-white/10 p-2.5 text-white shrink-0">
+                  <div
+                    key={index}
+                    className="group glass flex items-start gap-3.5 p-3.5 transition-colors duration-300 hover:border-white/25"
+                  >
+                    <div className="border border-white/15 bg-black/30 p-2 text-neutral-300 shrink-0 transition-colors duration-300 group-hover:text-signal group-hover:border-signal/40">
                       <TraitIcon name={trait.icon} />
                     </div>
                     <div>
                       <h3 className="text-white font-light text-[15px] mb-0.5">{trait.title}</h3>
-                      <p className="text-neutral-400 text-[13px] font-light leading-relaxed">{trait.description}</p>
+                      <p className="text-neutral-300 text-[13px] font-light leading-relaxed">{trait.description}</p>
                     </div>
                   </div>
                 ))}
@@ -65,34 +78,35 @@ const About = () => {
 
           {/* Right: bio + quote + education/focus */}
           <div className="lg:col-span-8 space-y-6">
-            {about.paragraphs.map((paragraph, index) => (
-              <p key={index} className="text-neutral-300 leading-relaxed font-light">
-                {paragraph}
-              </p>
-            ))}
+            <div className="glass p-6 sm:p-8 space-y-5">
+              {about.paragraphs.map((paragraph, index) => (
+                <p key={index} className="text-neutral-200 leading-relaxed font-light">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
 
-            <blockquote className="border-l-2 border-cyan-400/60 bg-white/[0.02] pl-6 pr-5 py-5">
+            <blockquote className="glass border-l-2 border-l-signal/60 pl-6 pr-5 py-5">
               <p className="text-neutral-200 italic font-light leading-relaxed">
                 &ldquo;Earth is the cradle of humanity, but one cannot live in the cradle forever.&rdquo;
               </p>
-              <footer className="mt-3 text-cyan-300 text-[11px] uppercase tracking-[0.2em] font-mono">
+              <footer className="mt-3 label-mono text-signal">
                 &mdash; Konstantin Tsiolkovsky
               </footer>
             </blockquote>
 
-            <div className="grid sm:grid-cols-2 gap-4 pt-2">
-              <div className="bg-white/[0.02] p-5 border border-white/10">
-                <h4 className="text-white text-[11px] uppercase tracking-[0.18em] font-light mb-3">{about.education.title}</h4>
-                {about.education.items.map((item, index) => (
-                  <p key={index} className="text-neutral-400 text-sm font-light mb-1">{item}</p>
-                ))}
-              </div>
-              <div className="bg-white/[0.02] p-5 border border-white/10">
-                <h4 className="text-white text-[11px] uppercase tracking-[0.18em] font-light mb-3">{about.focus.title}</h4>
-                {about.focus.items.map((item, index) => (
-                  <p key={index} className="text-neutral-400 text-sm font-light mb-1">{item}</p>
-                ))}
-              </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              {[about.education, about.focus].map((list, listIndex) => (
+                <div key={listIndex} className="glass p-5">
+                  <h4 className="label-mono text-white mb-3 flex items-center gap-2">
+                    <span aria-hidden="true" className="w-1 h-1 bg-signal" />
+                    {list.title}
+                  </h4>
+                  {list.items.map((item, index) => (
+                    <p key={index} className="text-neutral-300 text-sm font-light mb-1">{item}</p>
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -103,7 +117,7 @@ const About = () => {
             <a
               href={about.resume.href}
               download={about.resume.downloadName || undefined}
-              className="group relative inline-flex items-center gap-3 px-14 py-5 border border-cyan-400/40 text-white text-base tracking-[0.18em] uppercase font-light shadow-[0_0_25px_rgba(34,211,238,0.12)] transition-all duration-300 hover:border-cyan-400/80 hover:bg-cyan-400/[0.08] hover:shadow-[0_0_38px_rgba(34,211,238,0.28)]"
+              className="group relative inline-flex items-center gap-3 px-14 py-5 border border-signal/40 text-white text-base tracking-[0.18em] uppercase font-light shadow-[0_0_25px_rgba(103,232,249,0.12)] transition-all duration-300 hover:border-signal/80 hover:bg-signal/[0.08] hover:shadow-[0_0_38px_rgba(103,232,249,0.28)]"
               style={{
                 animation: 'subtle-pulse 3s ease-in-out infinite'
               }}

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { loadModel } from '../lib/modelCache';
 
 /**
  * Interactive 3D model viewer for GLB/glTF (the site's 3D format — fast, no
@@ -56,6 +56,9 @@ export default function ModelViewer({
     let controls: OrbitControls | null = null;
     let pmrem: THREE.PMREMGenerator | null = null;
     let resizeObserver: ResizeObserver | null = null;
+    let intersectionObserver: IntersectionObserver | null = null;
+    let envTexture: THREE.Texture | null = null;
+    const ownedDisposables: { dispose(): void }[] = [];
 
     const setupScene = (object: THREE.Object3D) => {
       if (disposed) return;
@@ -73,7 +76,8 @@ export default function ModelViewer({
       mount.appendChild(renderer.domElement);
 
       pmrem = new THREE.PMREMGenerator(renderer);
-      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      envTexture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environment = envTexture;
       scene.environmentIntensity = 0.18;
 
       // pivot (turntable) → orient (lay flat) → object (centered).
@@ -130,7 +134,10 @@ export default function ModelViewer({
       fill.position.set(-maxDim, maxDim * 0.5, -maxDim * 0.8);
       scene.add(fill);
 
-      const ground = new THREE.Mesh(new THREE.PlaneGeometry(maxDim * 8, maxDim * 8), new THREE.ShadowMaterial({ opacity: 0.4 }));
+      const groundGeometry = new THREE.PlaneGeometry(maxDim * 8, maxDim * 8);
+      const groundMaterial = new THREE.ShadowMaterial({ opacity: 0.4 });
+      ownedDisposables.push(groundGeometry, groundMaterial, key.shadow);
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
       ground.rotation.x = -Math.PI / 2;
       ground.position.y = bottomY - maxDim * 0.01;
       ground.receiveShadow = true;
@@ -165,8 +172,10 @@ export default function ModelViewer({
         });
       }
 
+      let inView = true;
       const loop = () => {
         frame = requestAnimationFrame(loop);
+        if (!inView || document.hidden) return;
         if (controls) controls.update();
         else if (autoRotate) pivot.rotation.y += 0.004;
         renderer?.render(scene, camera);
@@ -182,15 +191,18 @@ export default function ModelViewer({
       });
       resizeObserver.observe(mount);
 
+      intersectionObserver = new IntersectionObserver(([entry]) => {
+        inView = entry.isIntersecting;
+      });
+      intersectionObserver.observe(mount);
+
       setStatus('ready');
     };
 
-    new GLTFLoader().load(
-      src,
-      (gltf) => {
-        if (!disposed) setupScene(gltf.scene);
+    loadModel(src).then(
+      (object) => {
+        if (!disposed) setupScene(object);
       },
-      undefined,
       () => {
         if (!disposed) setStatus('error');
       },
@@ -200,10 +212,14 @@ export default function ModelViewer({
       disposed = true;
       cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
+      intersectionObserver?.disconnect();
       controls?.dispose();
       pmrem?.dispose();
+      envTexture?.dispose();
+      ownedDisposables.forEach((d) => d.dispose());
       if (renderer) {
         renderer.dispose();
+        renderer.forceContextLoss();
         renderer.domElement.remove();
       }
     };

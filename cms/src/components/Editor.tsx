@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BLOG_REL, readPost, savePost, importPublicMedia, type BlogPost } from '../api';
+import { BLOG_REL, readPost, savePost, importPublicMedia, postImportDests, type BlogPost } from '../api';
 import type { Block } from '@portfolio/content-schema';
 import Preview from './Preview';
 import { Field, ImageField, ItemToolbar, TagsField, TextArea, TextField } from './fields';
@@ -140,7 +140,7 @@ export default function Editor({ repo, slug, onBack }: { repo: string; slug: str
                 baseDir={baseDir}
                 kind="image"
                 onChange={(src) => patch({ coverImage: src || undefined })}
-                onImport={() => importPublicMedia(repo)}
+                onImport={() => importPublicMedia(repo, postImportDests(baseDir))}
               />
 
               <div className="section-title">Content blocks ({draft.blocks.length})</div>
@@ -160,7 +160,7 @@ export default function Editor({ repo, slug, onBack }: { repo: string; slug: str
                     block={block}
                     root={repo}
                     baseDir={baseDir}
-                    onImport={() => importPublicMedia(repo)}
+                    onImport={() => importPublicMedia(repo, postImportDests(baseDir))}
                     onChange={(c) => patchBlock(block.id, c)}
                   />
                 </div>

@@ -21,16 +21,16 @@ const inline = (text: string): { __html: string } => ({
 });
 
 const HEADING_CLASS: Record<1 | 2 | 3, string> = {
-  1: 'font-display text-4xl font-light text-white mt-14 mb-6 tracking-tight',
-  2: 'font-display text-3xl font-light text-white mt-12 mb-5 tracking-tight',
-  3: 'font-display text-2xl font-light text-white mt-10 mb-4 tracking-tight',
+  1: 'font-display text-3xl sm:text-4xl font-light text-white mt-14 mb-6 tracking-tight first:mt-0',
+  2: 'font-display text-2xl sm:text-3xl font-light text-white mt-12 mb-5 tracking-tight first:mt-0',
+  3: 'font-display text-xl sm:text-2xl font-light text-white mt-10 mb-4 tracking-tight first:mt-0',
 };
 
 const CALLOUT_CLASS: Record<NonNullable<Extract<Block, { type: 'callout' }>['variant']>, string> = {
-  info: 'border-sky-800/60 bg-sky-950/30 text-sky-100',
-  note: 'border-white/15 bg-white/[0.03] text-neutral-200',
-  success: 'border-emerald-800/60 bg-emerald-950/30 text-emerald-100',
-  warning: 'border-amber-800/60 bg-amber-950/30 text-amber-100',
+  info: 'border-l-sky-400/70 text-sky-100',
+  note: 'border-l-white/40 text-neutral-200',
+  success: 'border-l-emerald-400/70 text-emerald-100',
+  warning: 'border-l-amber-400/70 text-amber-100',
 };
 
 function renderBlock(block: Block) {
@@ -44,7 +44,7 @@ function renderBlock(block: Block) {
       return (
         <p
           key={block.id}
-          className="text-neutral-300 leading-relaxed font-light mb-6 text-[17px]"
+          className="text-neutral-200 leading-relaxed font-light mb-6 text-[17px] max-w-[68ch]"
           dangerouslySetInnerHTML={inline(block.text)}
         />
       );
@@ -85,9 +85,9 @@ function renderBlock(block: Block) {
       return (
         <ListTag
           key={block.id}
-          className={`mb-6 space-y-2 text-neutral-300 font-light text-[17px] ${
+          className={`mb-6 space-y-2 text-neutral-200 font-light text-[17px] max-w-[68ch] ${
             block.ordered ? 'list-decimal' : 'list-disc'
-          } list-outside pl-6 marker:text-neutral-600`}
+          } list-outside pl-6 marker:text-neutral-500`}
         >
           {block.items.map((item, i) => (
             <li key={i} className="leading-relaxed" dangerouslySetInnerHTML={inline(item)} />
@@ -100,10 +100,10 @@ function renderBlock(block: Block) {
       return (
         <pre
           key={block.id}
-          className="my-8 overflow-x-auto border border-white/10 bg-neutral-950 p-4"
+          className="my-8 overflow-x-auto border border-white/10 bg-black/60 p-4"
         >
           {block.language && (
-            <div className="mb-2 text-xs uppercase tracking-[0.15em] text-neutral-500">{block.language}</div>
+            <div className="label-mono text-signal/70 mb-3">{block.language}</div>
           )}
           <code className="font-mono text-sm text-neutral-200">{block.code}</code>
         </pre>
@@ -113,21 +113,23 @@ function renderBlock(block: Block) {
       return (
         <blockquote
           key={block.id}
-          className="my-8 border-l-2 border-white/20 pl-6 italic text-neutral-300 font-light text-[17px]"
+          className="my-8 border-l-2 border-signal/60 pl-6 italic text-neutral-200 font-light text-[17px] max-w-[68ch]"
           dangerouslySetInnerHTML={inline(block.text)}
         />
       );
 
     case 'divider':
-      return <hr key={block.id} className="my-12 border-white/10" />;
+      return <hr key={block.id} className="my-12 border-white/10 [border-image:linear-gradient(to_right,rgba(255,255,255,0.18),transparent)_1]" />;
 
     case 'callout':
       return (
         <div
           key={block.id}
-          className={`my-8 border p-4 font-light leading-relaxed ${CALLOUT_CLASS[block.variant]}`}
-          dangerouslySetInnerHTML={inline(block.text)}
-        />
+          className={`glass border-l-2 my-8 p-4 ${CALLOUT_CLASS[block.variant]}`}
+        >
+          <div className="label-mono mb-2">{block.variant}</div>
+          <div className="font-light leading-relaxed" dangerouslySetInnerHTML={inline(block.text)} />
+        </div>
       );
 
     default:

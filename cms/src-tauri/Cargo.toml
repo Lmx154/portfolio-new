@@ -18,6 +18,8 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# HTTP client for the local Ollama server (plain http://localhost — no TLS backend needed).
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
 
 [profile.release]
 panic = "abort"

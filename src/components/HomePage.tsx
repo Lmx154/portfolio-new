@@ -6,6 +6,21 @@ import About from './About';
 import Gallery from './Gallery';
 import { site } from '../data/site';
 
+const footerLink =
+  'group inline-flex items-center gap-2 text-neutral-400 hover:text-white focus-visible:text-white transition-colors duration-300 font-light text-sm';
+const footerNav = [
+  { label: 'About', href: '#about' },
+  { label: 'Gallery', href: '#gallery' },
+  { label: 'Projects', href: '#projects' },
+  { label: 'Blog', href: '#blog' },
+];
+
+const footerExternal = [
+  { label: 'GitHub', href: site.links.github },
+  { label: 'LinkedIn', href: site.links.linkedin },
+  { label: 'X (Twitter)', href: site.links.twitter },
+];
+
 const HomePage = () => {
   return (
     <div className="min-h-screen text-white relative">
@@ -18,76 +33,59 @@ const HomePage = () => {
         <Gallery />
       </main>
       
-      <footer className="border-t border-white/10 py-12 relative z-10">
+      <footer className="relative z-10 border-t border-white/10 bg-black/60 backdrop-blur-md pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Links */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
             <div>
-              <h3 className="text-white text-xs uppercase tracking-[0.18em] font-light mb-4">LINKS</h3>
-              <div className="space-y-2">
-                <a href="#about" className="block text-neutral-400 hover:text-white transition-colors font-light text-sm">
-                  About
-                </a>
-                <a href="#gallery" className="block text-neutral-400 hover:text-white transition-colors font-light text-sm">
-                  Gallery
-                </a>
-                <a href="#projects" className="block text-neutral-400 hover:text-white transition-colors font-light text-sm">
-                  Projects
-                </a>
-                <a href="#blog" className="block text-neutral-400 hover:text-white transition-colors font-light text-sm">
-                  Blog
-                </a>
-              </div>
+              <h3 className="label-mono text-signal/80 mb-5">01 / Navigate</h3>
+              <ul className="space-y-3">
+                {footerNav.map((item) => (
+                  <li key={item.href}>
+                    <a href={item.href} className={footerLink}>
+                      {item.label}
+                      <span aria-hidden="true" className="text-neutral-600 transition-all duration-300 group-hover:text-signal group-hover:translate-x-1 group-focus-visible:text-signal">→</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            {/* External Links */}
             <div>
-              <h3 className="text-white text-xs uppercase tracking-[0.18em] font-light mb-4">EXTERNAL</h3>
-              <div className="space-y-2">
-                <a 
-                  href={site.links.github} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-neutral-400 hover:text-white transition-colors font-light text-sm flex items-center space-x-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  <span>GitHub</span>
-                </a>
-                <a 
-                  href={site.links.linkedin} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-neutral-400 hover:text-white transition-colors font-light text-sm flex items-center space-x-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  <span>LinkedIn</span>
-                </a>
-                <a 
-                  href={site.links.twitter} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-neutral-400 hover:text-white transition-colors font-light text-sm flex items-center space-x-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  <span>X (Twitter)</span>
-                </a>
-              </div>
+              <h3 className="label-mono text-signal/80 mb-5">02 / External</h3>
+              <ul className="space-y-3">
+                {footerExternal.map((item) => (
+                  <li key={item.label}>
+                    <a href={item.href} target="_blank" rel="noopener noreferrer" className={footerLink}>
+                      {item.label}
+                      <span aria-hidden="true" className="text-neutral-600 transition-all duration-300 group-hover:text-signal group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-focus-visible:text-signal">↗</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
 
-            {/* Copyright */}
             <div className="md:text-right">
-              <p className="text-neutral-400 font-light text-sm">
-                {site.footer.copyright}
-              </p>
-              <p className="text-neutral-600 text-xs font-light mt-1">
-                {site.footer.rights}
-              </p>
+              <h3 className="label-mono text-signal/80 mb-5">03 / Credits</h3>
+              <p className="text-neutral-400 font-light text-sm">{site.footer.copyright}</p>
+              <p className="text-neutral-400 text-xs font-light mt-1">{site.footer.rights}</p>
+            </div>
+          </div>
+
+          <div className="mt-12 pt-6 border-t border-white/10 flex flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between">
+            <span className="hidden sm:block sm:flex-1" aria-hidden="true" />
+            <p className="label-mono flex items-center gap-3 text-neutral-400">
+              <span aria-hidden="true" className="signal-pulse inline-block w-1.5 h-1.5 rounded-full bg-signal shadow-[0_0_8px_rgba(103,232,249,0.8)]" />
+              End of transmission
+            </p>
+            <div className="sm:flex-1 sm:flex sm:justify-end">
+              <button
+                type="button"
+                onClick={() => window.scrollTo({ top: 0, behavior: 'auto' })}
+                className="hud group label-mono inline-flex items-center gap-2 px-4 py-2 border border-white/15 text-neutral-300 hover:text-white hover:border-white/40 transition-colors duration-300"
+              >
+                Return to orbit
+                <span aria-hidden="true" className="transition-transform duration-300 group-hover:-translate-y-0.5">↑</span>
+              </button>
             </div>
           </div>
         </div>
