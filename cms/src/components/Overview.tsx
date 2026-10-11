@@ -94,6 +94,10 @@ function computeWarnings(d: Data): Warning[] {
   if (noAltTiles.length) {
     w.push({ msg: `${plural(noAltTiles.length, 'community tile')} without alt text: ${nameList(noAltTiles.map((g) => g.title || String(g.id)))}.`, section: 'community' });
   }
+  for (const g of d.gallery ?? []) {
+    const noAlt = (g.media ?? []).filter((m) => m.type === 'image' && m.src && !m.alt?.trim()).length;
+    if (noAlt) w.push({ msg: `Community tile “${g.title || String(g.id)}” has ${plural(noAlt, 'gallery image')} without alt text.`, section: 'community' });
+  }
 
   if (d.about) {
     if (!d.about.profileImage) w.push({ msg: 'About page has no profile image.', section: 'about' });

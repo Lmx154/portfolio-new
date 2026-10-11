@@ -1,19 +1,24 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import HomePage from './components/HomePage';
 import SpaceBackground from './components/SpaceBackgroundLazy';
 import Header from './components/Header';
 import NotFound from './components/NotFound';
 import { ImageModalProvider } from './components/ImageModalProvider';
-import { isSpacelab } from './space/isSpacelab';
 
 const BlogPost = lazy(() => import('./components/BlogPost'));
 
 // Component to handle scroll restoration
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
+  const lastLocation = useRef<string | null>(null);
 
   useEffect(() => {
+    const key = pathname + hash;
+    // Same location again only happens when StrictMode replays the mount effect.
+    if (lastLocation.current === key) return;
+    const firstMount = lastLocation.current === null;
+    lastLocation.current = key;
     if (hash) {
       const target = document.getElementById(hash.slice(1));
       if (target) {
@@ -21,6 +26,9 @@ function ScrollToTop() {
         return;
       }
     }
+    // Never reset on first mount: a reader may have scrolled the prerendered
+    // page before JS loaded, and hydration must not move them.
+    if (firstMount) return;
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [pathname, hash]);
 
@@ -55,7 +63,7 @@ function PersistentBackground() {
  * the site's own fixed background layer (as SpaceBackground) put the
  * homepage on top of the grid and decoupled page scroll from it entirely.
  */
-function SpacelabPage() {
+export function SpacelabPage() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -110,20 +118,20 @@ function AnimatedRoutes() {
   );
 }
 
-function App() {
-  if (isSpacelab()) return <SpacelabPage />;
-
+/**
+ * The site tree shared by the browser and the build-time prerender. It is
+ * router-agnostic: the client entry wraps it in BrowserRouter, the server entry
+ * in StaticRouter. Nothing here may read browser globals, the clock or
+ * randomness during render (ADR-001).
+ */
+export function Site() {
   return (
-    <Router>
-      <ImageModalProvider>
-        <ScrollToTop />
-        <div className="min-h-screen bg-black text-white relative">
-          <PersistentBackground />
-          <AnimatedRoutes />
-        </div>
-      </ImageModalProvider>
-    </Router>
+    <ImageModalProvider>
+      <ScrollToTop />
+      <div className="min-h-screen bg-black text-white relative">
+        <PersistentBackground />
+        <AnimatedRoutes />
+      </div>
+    </ImageModalProvider>
   );
 }
-
-export default App;

@@ -48,7 +48,7 @@ const EmbeddedVideo: React.FC<EmbeddedVideoProps> = ({
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
-          className="w-full h-auto min-h-[300px] border border-gray-700 rounded-lg"
+          className="w-full h-auto min-h-[300px] border border-gray-700"
         />
       </div>
     );
@@ -65,7 +65,7 @@ const EmbeddedVideo: React.FC<EmbeddedVideoProps> = ({
         loop={loop}
         muted={muted}
         controls={controls}
-        className="w-full h-auto border border-gray-700 rounded-lg"
+        className="w-full h-auto border border-gray-700"
         preload="metadata"
       >
         <p className="text-gray-400 text-center py-8">

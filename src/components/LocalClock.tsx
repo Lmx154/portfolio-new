@@ -18,7 +18,9 @@ const readout = () => {
 
 /** Live "LOCAL 14:32 CDT" readout, refreshed on each minute boundary. */
 const LocalClock = ({ className = '' }: { className?: string }) => {
-  const [time, setTime] = useState(readout);
+  // Fixed placeholder so the prerendered HTML and the hydrating render match;
+  // the effect fills in the real time.
+  const [time, setTime] = useState('--:--');
 
   useEffect(() => {
     let timer: number;

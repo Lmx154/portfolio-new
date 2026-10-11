@@ -2,6 +2,7 @@ import { galleryItemsApi, importPublicImage } from '../api';
 import type { GalleryItem } from '@portfolio/content-schema';
 import { ImageField, TextArea, TextField } from './fields';
 import CollectionEditor from './CollectionEditor';
+import MediaListEditor from './MediaListEditor';
 
 export default function GalleryEditor({ repo }: { repo: string }) {
   return (
@@ -14,6 +15,7 @@ export default function GalleryEditor({ repo }: { repo: string }) {
         steps: [
           'Click ＋ New tile, give it a title, and Create. An id is generated for you.',
           'Expand a tile to set its image (Choose… from the site, or Import… from disk), title, alt text, and description.',
+          'To turn a tile into a small gallery, add items under Gallery (optional): images, local videos, or a pasted YouTube link. Visitors open the tile to browse them.',
           'Alt text describes the photo for screen readers and search engines. Keep it short and factual.',
           'Use ↑ / ↓ to change the order tiles appear in. Reordering pauses while you search.',
           'Press Save to write the tiles and their order to the site content.',
@@ -35,6 +37,13 @@ export default function GalleryEditor({ repo }: { repo: string }) {
             <TextField label="Alt text" value={item.alt} onChange={(v) => update({ alt: v })} />
           </div>
           <TextArea label="Description" value={item.description} onChange={(v) => update({ description: v })} />
+          <MediaListEditor
+            repo={repo}
+            label="Gallery (optional) — extra images and videos opened from this tile"
+            types={['image', 'video']}
+            media={item.media ?? []}
+            onChange={(m) => update({ media: m.length ? m : undefined })}
+          />
         </>
       )}
     />

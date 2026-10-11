@@ -9,7 +9,7 @@ const NotFound = () => {
         <div className="min-h-screen text-white flex items-center justify-center pt-20 px-6">
           <div className="glass hud relative w-full max-w-xl px-8 py-12 sm:px-12 sm:py-14 text-center">
             <p className="label-mono flex items-center justify-center gap-3 text-signal/90 mb-6">
-              <span aria-hidden="true" className="signal-pulse inline-block w-1.5 h-1.5 rounded-full bg-signal shadow-[0_0_8px_rgba(103,232,249,0.8)]" />
+              <span aria-hidden="true" className="signal-pulse inline-block w-1.5 h-1.5 bg-signal shadow-[0_0_8px_rgba(103,232,249,0.8)]" />
               ERR 404 · Signal lost
             </p>
             <h1 className="font-display text-4xl sm:text-5xl font-light tracking-tight text-white text-legible mb-4">

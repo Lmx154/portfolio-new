@@ -11,7 +11,8 @@ const Header = () => {
   const isHomePage = location.pathname === '/';
   const isBlogPost = location.pathname.startsWith('/blog/');
 
-  const [scrolled, setScrolled] = useState(() => window.scrollY > 24);
+  // Starts false on the server and the hydrating render; the effect below syncs it.
+  const [scrolled, setScrolled] = useState(false);
   const [spySection, setSpySection] = useState<string | null>('hero');
 
   useEffect(() => {

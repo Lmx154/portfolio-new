@@ -136,6 +136,7 @@ export const GUIDES: Guide[] = [
     steps: [
       'Open Community. Each tile is one photo with a title, alt text and description.',
       'Click “New tile” to add one, then choose its image (Choose…, Import…, or Crop…), and fill in Title, Alt text and Description.',
+      'To make a tile a small gallery, use “Add media” under Gallery (optional). Add images, or videos: import a video file, or paste a YouTube link (youtube.com/watch, youtu.be or youtube.com/shorts). Tiles with a gallery show a badge and open a lightbox on the site; tiles without one open the single photo as before.',
       'Search to find a tile, collapse or expand them all with one button, and use the up and down arrows to reorder. Use the select button to tick several tiles and delete them together.',
       'Click Save to write the changes.',
     ],

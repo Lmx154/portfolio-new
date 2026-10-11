@@ -74,7 +74,7 @@ const HomePage = () => {
           <div className="mt-12 pt-6 border-t border-white/10 flex flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between">
             <span className="hidden sm:block sm:flex-1" aria-hidden="true" />
             <p className="label-mono flex items-center gap-3 text-neutral-400">
-              <span aria-hidden="true" className="signal-pulse inline-block w-1.5 h-1.5 rounded-full bg-signal shadow-[0_0_8px_rgba(103,232,249,0.8)]" />
+              <span aria-hidden="true" className="signal-pulse inline-block w-1.5 h-1.5 bg-signal shadow-[0_0_8px_rgba(103,232,249,0.8)]" />
               End of transmission
             </p>
             <div className="sm:flex-1 sm:flex sm:justify-end">

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { MediaItem } from '../content/schema';
 import LazyModel from './LazyModel';
+import { parseYouTubeId, youTubeEmbedUrl, youTubeThumbUrl } from '../lib/youtube';
 
 /* ------------------------------------------------------------- media view */
 
@@ -29,6 +30,22 @@ function MediaView({ item, mode }: { item: MediaItem; mode: 'tile' | 'full' }) {
     return <LazyModel src={item.src} interactive={mode === 'full'} autoRotate gate={mode === 'tile'} />;
   }
   if (item.type === 'video') {
+    const ytId = parseYouTubeId(item.src);
+    if (ytId) {
+      return mode === 'full' ? (
+        <iframe
+          src={youTubeEmbedUrl(ytId)}
+          title={item.caption || item.alt || 'YouTube video'}
+          allow="accelerometer; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+          className="border-0 bg-black"
+          style={{ aspectRatio: '16 / 9', width: 'min(100%, calc(80vh * 16 / 9))' }}
+        />
+      ) : (
+        <img src={youTubeThumbUrl(ytId)} alt={item.alt || ''} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+      );
+    }
     return mode === 'full' ? (
       <video src={item.src} controls autoPlay playsInline className="max-w-full max-h-full" />
     ) : (
@@ -65,7 +82,7 @@ function Arrow({ dir, onClick, big }: { dir: 'left' | 'right'; onClick: () => vo
 
 /* -------------------------------------------------------------- lightbox */
 
-function MediaLightbox({
+export function MediaLightbox({
   items,
   startIndex,
   title,
@@ -76,7 +93,7 @@ function MediaLightbox({
   startIndex: number;
   title: string;
   onClose: () => void;
-  onIndexChange: (i: number) => void;
+  onIndexChange?: (i: number) => void;
 }) {
   const [i, setI] = useState(startIndex);
   const many = items.length > 1;
@@ -85,7 +102,7 @@ function MediaLightbox({
   const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    onIndexChange(i);
+    onIndexChange?.(i);
   }, [i, onIndexChange]);
 
   useEffect(() => {
@@ -132,7 +149,7 @@ function MediaLightbox({
       </button>
 
       <div className="relative w-[88vw] h-[80vh] max-w-6xl flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-        <MediaView item={item} mode="full" />
+        <MediaView key={i} item={item} mode="full" />
       </div>
 
       {many && <Arrow dir="left" big onClick={() => go(-1)} />}

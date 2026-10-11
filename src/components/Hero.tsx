@@ -45,7 +45,7 @@ const Hero = () => {
             {site.name}
           </p>
 
-          <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-light text-white text-legible leading-[0.95] tracking-tight mb-7">
+          <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-light text-white text-legible leading-[0.95] tracking-tight mb-12">
             {site.headlines.map((headline, index) => (
               <span key={index} className={`block ${rise}`} style={delay(index + 1)}>
                 {headline}
@@ -53,17 +53,9 @@ const Hero = () => {
             ))}
           </h1>
 
-          <p
-            className={`flex items-center gap-3 font-mono text-xs md:text-sm tracking-[0.14em] text-neutral-400 text-legible mb-12 ${rise}`}
-            style={delay(site.headlines.length + 1)}
-          >
-            <span aria-hidden="true" className="signal-pulse inline-block w-1.5 h-1.5 rounded-full bg-signal shadow-[0_0_8px_rgba(103,232,249,0.8)]" />
-            {site.role}
-          </p>
-
           <div
             className={`flex flex-wrap items-center justify-center gap-4 ${rise}`}
-            style={delay(site.headlines.length + 2)}
+            style={delay(site.headlines.length + 1)}
           >
             {site.ctas.map((cta, index) => (
               <button

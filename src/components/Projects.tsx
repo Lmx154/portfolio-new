@@ -45,7 +45,7 @@ const Projects = () => {
                 <div className="label-mono mb-4 flex items-center gap-2">
                   <span
                     aria-hidden="true"
-                    className={`w-1.5 h-1.5 rounded-full ${projectStatusColor(project.status)} ${
+                    className={`w-1.5 h-1.5 ${projectStatusColor(project.status)} ${
                       project.status.trim().toLowerCase() === 'in progress' ? 'signal-pulse' : ''
                     }`}
                   />

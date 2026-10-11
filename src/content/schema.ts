@@ -168,6 +168,8 @@ export const GalleryItemSchema = z.object({
   alt: z.string().default(''),
   title: z.string().default(''),
   description: z.string().default(''),
+  /** Optional extra images/videos for this tile. A video `src` is a local file or a YouTube URL. */
+  media: z.array(MediaItemSchema).optional(),
 });
 
 export const GallerySchema = z.object({

@@ -76,30 +76,36 @@ function devBlogsMiddleware(): Plugin {
   };
 }
 
-export default defineConfig({
+// `isSsrBuild` is the prerender's server bundle (`vite build --ssr
+// src/entry-server.tsx --outDir dist-ssr`). It must not inherit the client's
+// index.html input, the `three` manualChunk (three is external there), the
+// media copy or public/, which only belong in dist/.
+export default defineConfig(({ isSsrBuild }) => ({
   plugins: [
     react(),
     devBlogsMiddleware(),
     // Only add static copy plugin if there are assets to copy
-    ...(function() { const p = makeStaticCopyPlugin(); return p ? [p] : []; })()
+    ...(isSsrBuild ? [] : (function() { const p = makeStaticCopyPlugin(); return p ? [p] : []; })())
   ],
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
-  build: {
-    // three.js is an intentional, lazily-loaded chunk; don't warn on its size.
-    chunkSizeWarningLimit: 700,
-    rollupOptions: {
-      input: {
-        main: './index.html',
-      },
-      output: {
-        // Split the heavy 3D libs into their own chunk so they're cached
-        // independently and shared between the lazy starfield + model viewer.
-        manualChunks: {
-          three: ['three'],
+  build: isSsrBuild
+    ? { copyPublicDir: false }
+    : {
+        // three.js is an intentional, lazily-loaded chunk; don't warn on its size.
+        chunkSizeWarningLimit: 700,
+        rollupOptions: {
+          input: {
+            main: './index.html',
+          },
+          output: {
+            // Split the heavy 3D libs into their own chunk so they're cached
+            // independently and shared between the lazy starfield + model viewer.
+            manualChunks: {
+              three: ['three'],
+            },
+          },
         },
       },
-    },
-  },
-});
+}));

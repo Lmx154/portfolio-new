@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { BLOG_REL, mediaUrl } from '../api';
+import { parseYouTubeId, youTubeThumbUrl } from '../../../src/lib/youtube';
 import { useAssetPicker, type PickFilter } from './AssetPicker';
 import ImageCropper from './ImageCropper';
 import ModelPreview from './LazyModelPreview';
@@ -189,8 +190,9 @@ export function ImageField({
   const { pickAsset } = useAssetPicker();
   const [busy, setBusy] = useState(false);
   const [cropping, setCropping] = useState(false);
-  const url = mediaUrl(root, value, baseDir);
-  const isVideo = /\.(mp4|webm|ogv|mov)$/i.test(value);
+  const ytId = kind === 'video' ? parseYouTubeId(value) : null;
+  const url = ytId ? youTubeThumbUrl(ytId) : mediaUrl(root, value, baseDir);
+  const isVideo = !ytId && /\.(mp4|webm|ogv|mov)$/i.test(value);
   const isModel = kind === 'model' || /\.(glb|gltf|obj)$/i.test(value);
   const valExt = (value.split('.').pop() || '').toLowerCase();
   const post = postSlugOf(baseDir);

@@ -111,30 +111,33 @@ const About = () => {
           </div>
         </div>
 
-        {/* Resume Download Button — the focal call to action */}
+        {/* Resume download control */}
         {about.resume.href && (
           <div className="flex justify-center mt-16">
             <a
               href={about.resume.href}
-              download={about.resume.downloadName || undefined}
-              className="group relative inline-flex items-center gap-3 px-14 py-5 border border-signal/40 text-white text-base tracking-[0.18em] uppercase font-light shadow-[0_0_25px_rgba(103,232,249,0.12)] transition-all duration-300 hover:border-signal/80 hover:bg-signal/[0.08] hover:shadow-[0_0_38px_rgba(103,232,249,0.28)]"
-              style={{
-                animation: 'subtle-pulse 3s ease-in-out infinite'
-              }}
+              download={about.resume.downloadName || ''}
+              className="hud group glass flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-4 p-3 pr-5 transition-colors duration-300 hover:border-signal/40 hover:bg-signal/[0.04]"
             >
-              <span>{about.resume.label}</span>
+              <span aria-hidden="true" className="grid place-items-center shrink-0 w-12 h-12 border border-white/15 bg-black/30 text-neutral-300 transition-colors duration-300 group-hover:text-signal group-hover:border-signal/40">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                </svg>
+              </span>
+              <span className="flex flex-col gap-1.5 min-w-0 flex-1">
+                <span className="font-display text-lg font-light leading-none text-white">{about.resume.label}</span>
+                <span className="label-mono text-[10px] leading-none">
+                  {`${(about.resume.href.split(/[?#]/)[0].split('.').pop() || 'file').toUpperCase()} · Download`}
+                </span>
+              </span>
               <svg
-                className="w-6 h-6 transition-transform group-hover:translate-y-0.5"
+                aria-hidden="true"
+                className="w-5 h-5 shrink-0 text-neutral-400 transition-[transform,color] duration-300 motion-safe:group-hover:translate-y-0.5 group-hover:text-signal"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.5v11.25m0 0-4.5-4.5m4.5 4.5 4.5-4.5M5.25 19.5h13.5" />
               </svg>
             </a>
           </div>
