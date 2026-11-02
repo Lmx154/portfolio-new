@@ -1,0 +1,284 @@
+{
+  "type": "blog",
+  "id": "two-wheeler-autonomy-platform",
+  "title": "Building a Self-Balancing Robot for Autonomy",
+  "status": "published",
+  "date": "2026-11-02",
+  "displayDate": "November 2, 2026",
+  "excerpt": "A self-balancing two-wheeler built as an autonomy testbed: hard real-time balance control on a Pico 2, a vision model on a Raspberry Pi 5, and a servo-swept time-of-flight sensor for landmark-based SLAM.",
+  "readTime": "8 min read",
+  "tags": [
+    "Robotics",
+    "Autonomy",
+    "SLAM",
+    "Computer Vision",
+    "Embedded",
+    "CAD"
+  ],
+  "coverImage": "assets/cad-robot-front.webp",
+  "blocks": [
+    {
+      "id": "blk_0saxa86",
+      "type": "paragraph",
+      "text": "I've been building a two-wheeled, self-balancing robot as a platform for autonomy. It started as an OSEPP 2-Wheeler kit, but almost everything above the drivetrain is now my own: the electronics, the power system, and a stack of 3D-printed mounts for a Raspberry Pi 5, a camera and a scanning time-of-flight sensor. The goal is a robot that balances itself, maps the room it's in and keeps track of where it is in that map, all on board, with no external tracking."
+    },
+    {
+      "id": "blk_gt0k4f0",
+      "type": "image",
+      "src": "assets/cad-robot-front.webp",
+      "alt": "CAD render of the two-wheeled robot from the front, showing the wheels, the two side wings with perfboards, the printed Pi 5 stack with the camera at the front, and the battery box on the top deck",
+      "caption": "The full robot in CAD: control and power boards on the wings, the Pi 5 stack in the middle, and the battery on top"
+    },
+    {
+      "id": "blk_vpg419b",
+      "type": "heading",
+      "level": 2,
+      "text": "Why a balancing robot for autonomy"
+    },
+    {
+      "id": "blk_5rp8uub",
+      "type": "paragraph",
+      "text": "A balancing robot is a harder autonomy platform than a four-wheeled rover, and that's the point. It's an inverted pendulum: it has to correct itself every few milliseconds just to stay upright, and every sensor on it pitches back and forth while it does. Perception, localization and planning all have to run on top of a control loop that can't miss a deadline."
+    },
+    {
+      "id": "blk_gueg3de",
+      "type": "paragraph",
+      "text": "That's the same split real autonomous vehicles have: a hard real-time layer that keeps the vehicle stable, and a perception and planning layer that decides where it should go. Building both layers on a small robot, and making them work together, is the skill set I want to develop."
+    },
+    {
+      "id": "blk_yg3xb6o",
+      "type": "heading",
+      "level": 2,
+      "text": "From kit to platform"
+    },
+    {
+      "id": "blk_mcztig4",
+      "type": "paragraph",
+      "text": "The base is OSEPP's 2-Wheeler kit: aluminum beams and plates on an 8 mm hole grid, two 25 mm gear motors with 1:45 gearboxes, and 68 mm wheels. I kept the frame and the drivetrain and replaced everything else. The kit's Arduino Uno, MPU-6050 and AA battery holder are gone, the wing plates now run lengthwise along the robot, and a new top deck carries the battery."
+    },
+    {
+      "id": "blk_l8yyoft",
+      "type": "image",
+      "src": "assets/chassis-on-scale.webp",
+      "alt": "The robot's aluminum frame with both gear motors and wheels attached, sitting on a kitchen scale on a workbench",
+      "caption": "Weighing the drivetrain and uprights early in the build"
+    },
+    {
+      "id": "blk_foqfyux",
+      "type": "image",
+      "src": "assets/frame-in-hand.webp",
+      "alt": "The robot frame held above a tiled floor, with red uprights, black perforated wing plates and loose motor wires",
+      "caption": "The frame with both wing plates fitted"
+    },
+    {
+      "id": "blk_xh4zasr",
+      "type": "heading",
+      "level": 2,
+      "text": "Architecture: real-time control on the Pico 2, perception on the Pi 5"
+    },
+    {
+      "id": "blk_2o0kkmh",
+      "type": "paragraph",
+      "text": "The robot has two computers, and each has one job."
+    },
+    {
+      "id": "blk_h0mhw0g",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Raspberry Pi Pico 2 (RP2350): real-time control.** It owns everything with a deadline: reading the ICM-45686 IMU, estimating tilt, running the balance loop, driving both motors through a TB6612FNG H-bridge, and sweeping the time-of-flight sensor with an MG90S servo. Nothing else runs on it, so loop timing stays deterministic.",
+        "**Raspberry Pi 5: perception and autonomy.** It runs the Arducam IMX519 camera and a vision model, fuses the camera with the depth scans and the Pico's sensor data, and runs SLAM and, later, path planning. It sends motion commands down to the Pico and never touches the motors directly."
+      ]
+    },
+    {
+      "id": "blk_ogwtghy",
+      "type": "paragraph",
+      "text": "Keeping the balance loop off the Pi is deliberate. Linux is great for vision and bad at guaranteeing that a control loop runs on time, every time. If the Pi stalls on a frame, the robot should keep balancing and wait for its next command, not fall over. It's also a lesson I learned on [MARV](/blog/marv-v2): sensor samples should drive the loop through data-ready interrupts instead of being polled whenever the firmware gets to them. The Pico 2 uses the same RP2350 family as MARV, so that firmware experience carries straight over."
+    },
+    {
+      "id": "blk_d4brm9a",
+      "type": "image",
+      "src": "assets/pico2-control-board.webp",
+      "alt": "A blue perfboard on a black wing plate carrying a Raspberry Pi Pico 2 H, a small white SlimeVR IMU breakout and several white JST connectors",
+      "caption": "The control board: a Pico 2 H and a SlimeVR breakout with the ICM-45686 IMU and a QMC6309 magnetometer, with JST connectors for the off-board wiring"
+    },
+    {
+      "id": "blk_xijxdgb",
+      "type": "heading",
+      "level": 2,
+      "text": "Mapping with a swinging depth sensor"
+    },
+    {
+      "id": "blk_0y7t9zo",
+      "type": "paragraph",
+      "text": "The sensing plan is where the robot gets interesting. Instead of a lidar, it has a TOF400C, a VL53L1X time-of-flight ranging sensor, on an arm attached to the MG90S servo. The servo traverses the sensor side to side, and because the Pico knows the servo angle at the moment each range reading is taken, every sweep builds a fan of depth readings across the front of the robot. In effect, it's a low-cost scanning depth sensor."
+    },
+    {
+      "id": "blk_2paapch",
+      "type": "paragraph",
+      "text": "The camera sits just above it, facing the same way. On the Pi 5, a vision model finds landmarks in the camera image: door frames, furniture legs, corners, anything distinctive enough to recognize again later. Because the camera and the servo carrying the ToF sensor are mounted at known positions relative to each other, a landmark's bearing in the image tells me where to look in the depth scan, and the depth at that bearing tells me how far away the landmark is. Range and bearing to recognizable landmarks is exactly what a SLAM back end needs."
+    },
+    {
+      "id": "blk_rxazv10",
+      "type": "paragraph",
+      "text": "The pipeline I'm aiming for:"
+    },
+    {
+      "id": "blk_1bmqv3w",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "The Pico timestamps every ToF reading with the servo angle and the IMU's tilt estimate, and streams each sweep to the Pi.",
+        "The Pi turns each sweep into a depth profile in the robot's frame, correcting for how far the robot was pitched at the moment of each reading.",
+        "The vision model detects landmarks in the camera frame, and their bearings are projected into the depth profile to get their range.",
+        "Those range-and-bearing observations, together with a motion estimate from the IMU and the motor commands, feed a SLAM back end that builds the map and keeps the robot localized in it."
+      ]
+    },
+    {
+      "id": "blk_xt50isn",
+      "type": "paragraph",
+      "text": "I expect the hard parts to be the ones that make autonomy hard everywhere. The ToF sensor's field of view is wide, so each reading averages over a cone instead of measuring along a single ray. A sweep takes time, so the robot moves during a scan. And because the robot is always balancing, its sensors are always pitching. Getting accurate timestamps across two computers and compensating for the robot's own motion is most of the work, and it's the kind of problem I want to get good at."
+    },
+    {
+      "id": "blk_wgkfywz",
+      "type": "image",
+      "src": "assets/cad-tof-arm.webp",
+      "alt": "CAD render of a printed servo arm with two small wire arches on top and two pins at the end for the time-of-flight sensor",
+      "caption": "The ToF arm on the servo horn reaches past the front deck so the sensor can sweep freely. Two small arches on top hold the 22 AWG sensor wires."
+    },
+    {
+      "id": "blk_pkvx1qi",
+      "type": "heading",
+      "level": 2,
+      "text": "Designing the hardware around autonomy"
+    },
+    {
+      "id": "blk_yctyu5h",
+      "type": "paragraph",
+      "text": "Before writing firmware, I modeled the whole robot in CAD: every kit part, every board and every printed mount, in a version-controlled repo. Kit parts follow OSEPP's engineering drawings where they exist, and every dimension records its source: a manufacturer drawing, a datasheet, a caliper measurement or an estimate. Estimated dimensions go on a checklist to measure before printing anything that has to fit, and the assembly is checked for interference so the printed parts don't collide once they're bolted together."
+    },
+    {
+      "id": "blk_j26onfw",
+      "type": "heading",
+      "level": 3,
+      "text": "Battery on top"
+    },
+    {
+      "id": "blk_pirqvd6",
+      "type": "paragraph",
+      "text": "Power comes from a 3S pack of Molicel P30B 18650 cells that I spot-welded in series, protected by an HW-375 3S BMS. The pack lives in a printed box mounted upside down on the top deck, so the deck itself closes the box. The BMS stands on edge in its own bay behind an inner wall with slots lined up with its balance taps, and the 16 AWG output leads exit toward the power board. Putting the heaviest part at the top is deliberate: raising the center of mass slows the pendulum's fall, which gives the balance controller more time to react."
+    },
+    {
+      "id": "blk_h6y5rgh",
+      "type": "image",
+      "src": "assets/cad-battery-box.webp",
+      "alt": "CAD render of an open printed battery box with mounting ears at each corner, a slotted inner wall for the BMS and honeycomb cutouts in its floor",
+      "caption": "The battery box mounts upside down so the top deck closes it. The BMS bay sits behind the slotted wall, and honeycomb cutouts lighten the closed face."
+    },
+    {
+      "id": "blk_r7gidvz",
+      "type": "heading",
+      "level": 3,
+      "text": "Electronics on dampers"
+    },
+    {
+      "id": "blk_05c558k",
+      "type": "paragraph",
+      "text": "The electronics are split across two 50 × 70 mm perfboards, one on each wing. The power board carries a USB-C breakout, the TB6612FNG motor driver and a Mini 560 Pro 5 V buck converter. The control board carries the Pico 2 and the IMU. Each board sits on a printed adapter plate, and each plate rides on four rubber FPV damper balls held with M3 nylon screws, the same kind of mount flight controllers use to cut down the motor and gearbox vibration that reaches the IMU."
+    },
+    {
+      "id": "blk_ukedfl7",
+      "type": "paragraph",
+      "text": "Instead of screws, small M2 nubs on the plate pass through the perfboard's holes and get heat-staked from the top. The plate is one piece with a honeycomb center, stiff enough that it won't warp while printing, and it has a notch cut where the chassis rivet heads stick up, so it still prints without supports."
+    },
+    {
+      "id": "blk_m2phxlm",
+      "type": "image",
+      "src": "assets/cad-control-wing.webp",
+      "alt": "Close-up CAD render of the robot's control wing: a perfboard with the Pico 2 and IMU on a printed adapter plate, raised above the wing plate on rubber damper balls",
+      "caption": "The control wing: the Pico 2 and IMU board on its adapter plate, floating on four rubber dampers"
+    },
+    {
+      "id": "blk_oageiut",
+      "type": "image",
+      "src": "assets/cad-perf-mount.webp",
+      "alt": "CAD render of a flat printed adapter plate with a honeycomb center, four heat-stake posts and corner holes, and a notch cut out of one edge",
+      "caption": "The adapter plate: M3 corner holes for the dampers, heat-stake nubs for the perfboard, a honeycomb center and the rivet notch"
+    },
+    {
+      "id": "blk_c5ic1uw",
+      "type": "heading",
+      "level": 3,
+      "text": "A protected stack for the Pi 5"
+    },
+    {
+      "id": "blk_tkw1mjd",
+      "type": "paragraph",
+      "text": "The Pi 5 is the most expensive part on the robot, so it sits low, on the middle base plate under the battery, inside a three-level printed stack. The bottom level cradles the Pi on heat-staked nubs, with a rail and corner guards so it can't slide off. The middle level holds the MG90S servo that sweeps the ToF arm and has a slot for the camera ribbon. The top level holds the Arducam IMX519 at the front edge, mounted upside down so the ribbon reaches its connector without a twist."
+    },
+    {
+      "id": "blk_71nedtr",
+      "type": "paragraph",
+      "text": "Four corner tie posts with captive nuts bolt the top of the stack to the top deck, so the battery, the deck and the stack hold still as one unit. That stiffness matters for autonomy as much as for durability: the landmark-to-depth matching only works if the camera and the servo carrying the ToF sensor keep a fixed geometric relationship, and a stack that flexes would quietly break that calibration. Most of the flat areas are honeycombed to save material and print time, and the posts taper into their plates after a thin-wall check flagged them as weak points."
+    },
+    {
+      "id": "blk_9o8zo0j",
+      "type": "image",
+      "src": "assets/cad-pi5-stack.webp",
+      "alt": "CAD render of the three-level printed Pi 5 stack with the camera mounted at the front of the top level, the servo on the middle level and the Pi 5 at the bottom",
+      "caption": "The Pi 5 stack: the Pi on the bottom level, the servo and ToF arm in the middle, and the camera at the front of the top level"
+    },
+    {
+      "id": "blk_qr22z0z",
+      "type": "image",
+      "src": "assets/pi5-and-camera-ribbon.webp",
+      "alt": "Top view of a Raspberry Pi 5 with its active cooler and an Arducam ribbon cable, mounted between the robot's red uprights",
+      "caption": "The Pi 5 with its active cooler and the Arducam ribbon, between the chassis uprights"
+    },
+    {
+      "id": "blk_55b2u58",
+      "type": "heading",
+      "level": 3,
+      "text": "Designed to fall over"
+    },
+    {
+      "id": "blk_i8ik103",
+      "type": "paragraph",
+      "text": "A balancing robot will fall over, especially while I'm tuning its controller, so I ran a tip-over analysis on the CAD model to find what hits the ground first. In an earlier version, the first contact was the edge of the Pi's base plate at about 64° of tilt, and the camera lens stuck out past the robot's outline. Now bolt-on bumpers at the base are the front-most and back-most points of the robot and make first contact at about 44.5°. Guard fins on either side of the camera sit just proud of the lens, and the lens, the ToF sensor and the Pi's ports are all inside the outline. How far the robot can rock past the bumper without tipping onto its top depends on its real center-of-mass height, which I'll measure once it's built."
+    },
+    {
+      "id": "blk_yp5cvmj",
+      "type": "image",
+      "src": "assets/cad-robot-side.webp",
+      "alt": "Side view CAD render of the robot showing the wheel, the stacked decks, the battery box on top and the bumper bars at the base reaching farther out than everything above them",
+      "caption": "Side view: the bumper bars at the base reach farther out, front and back, than the camera and the Pi's ports above them"
+    },
+    {
+      "id": "blk_ikqgljs",
+      "type": "heading",
+      "level": 2,
+      "text": "What's next"
+    },
+    {
+      "id": "blk_afwazas",
+      "type": "paragraph",
+      "text": "The chassis is assembled, both perfboards are built, and the CAD for every printed part is done. From here, each step moves the robot from following commands toward making its own decisions:"
+    },
+    {
+      "id": "blk_z30e9jx",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Print and fit the mounts, then measure the real center of mass.",
+        "Pico 2 firmware: interrupt-driven IMU sampling, a tilt estimator and the balance loop, then velocity and turning control on top of it.",
+        "The servo sweep, with timestamped ToF scans streaming to the Pi 5.",
+        "The vision model and landmark-to-depth association on the Pi 5, then SLAM."
+      ]
+    },
+    {
+      "id": "blk_zae8qdf",
+      "type": "paragraph",
+      "text": "Balance first, then knowing where it is, then deciding where to go. I'll post updates as each layer of the autonomy stack comes online."
+    }
+  ]
+}

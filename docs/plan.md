@@ -70,3 +70,20 @@ Verified live: `/` → `<div id="root"></div>` only; `/robots.txt` 404; Cloudfla
 - 2026-10-10: Packets 2+3 done; lead wired discoveryFiles() → src/seo/discovery. Full build: 7 pages + robots/sitemap/llms/llms-full; 113 tests; tsc app+node clean; CMS green. Bot's-eye check (vite preview, ClaudeBot UA, no JS): / = 1004 words, /blog/marv-v2/ = 738 words, correct titles; .txt/.xml served non-HTML. Final reviewer running. Post-deploy check outstanding (owner must publish + confirm Render build command).
 - 2026-10-10: Final M6 reviewer PASS. Lead fixed: prerender draft scan now covers dist/*.txt|*.xml; llms.txt link text escapes [ ]. Build green, 113 tests, tsc/eslint clean. Owner already published earlier rounds (commit b2d0def "content update", 52 files); M6 still uncommitted. Live `/` still empty root (expected).
   - Remaining (owner): confirm Render Build Command runs `pnpm build` + Publish dir `dist`; publish; then lead verifies with curl (`/blog/marv-v2` with and without trailing slash, ClaudeBot UA, robots/sitemap/llms content-types). Only if `/blog/<id>` (no slash) serves the post HTML: remove the dashboard `/*`→`/index.html` rewrite (else add `/blog/:slug` → `/blog/:slug/index.html` rewrite first).
+
+## Redirect (verbatim, 2026-11-02)
+> i had already made a blog for MARV-V2, but now it's final and it's in manufacturing. [renders + JLC "In Production" screenshot]
+> here is the marv-v2 pcb repo so you can make a project block for it put it next to marv https://github.com/Lmx154/MARV-V2-PCB
+> make a nice 3d model with the kicad like the one marv has
+> marv pcb is in here /home/luis/Documents/kicad/MARV-V2
+> also i have been designing a two wheeler. make a blog on it. put some pictures of the cad and some of the design decisions as well as some of these pictures [4 photos]
+> in the blog talk about how i want to create the realtime control on the pico 2, the servo will help us with traversing, and then the pi 5 with the camera will sport a vision model. the aim is to implement SLAM by attempting to use depth from the tof and the camera image as well as sensor data to find landmarks in the cv image and relate them to the depth image formed by the sensor as it swings side to side.
+> the two wheeler is here /home/luis/Projects/CAD/osepp-2wheeler
+> mention autonomy a lot because i am applying to robotics positions.
+
+- 2026-11-02 DONE (Direct lane, lead): `public/MARV-V2-PCB.glb` from `kicad-cli pcb export glb` (KiCad 10, tracks/pads/zones/silk/mask) → `scripts/convert-model.mjs` (8.8 MB, 1.5 MB gzip); `src/content/projects/marv-v2.json` (order 6, status "In Manufacturing", model + 2 renders, GitHub link); marv-v2 post updated to Rev 1 facts (LSM6DSK320X replaces ADXL375, J17 plug-on converter, manufacturing section + production screenshot; old pre-final renders removed); new post `two-wheeler-autonomy-platform` (11 images: 7 CAD renders from the osepp-2wheeler repo, 4 owner photos). Build/prerender green (8 pages), 113 tests, tsc clean, browser check 0 errors. Nothing committed.
+
+## Redirect (verbatim, 2026-11-02)
+> right now the MARV V2 PCB 3d rotation on the project tile is too dark it needs some light like the MARV tile. Also it's lagging like crazy please help with optimization
+
+- DONE: cause was the asset, not the viewer. The KiCad GLB had 16,741 primitives (draw calls; MARV has 32) and left metallicFactor unset (glTF default = 1.0 → near-black under the 0.18 env). `scripts/convert-model.mjs`: flatten + join (all models), and for KiCad exports (asset.extras.generator "KiCad…") metallic 0.05 / roughness 0.5 (MARV's values) + silkscreen opaque. MARV-V2-PCB.glb regenerated: 28 primitives, 7.9 MB. Measured on the built site (RTX 4070): old 14.4 fps / worst frame 100 ms → new 59.9 fps / 21 ms. Viewer lighting untouched (MARV unchanged). STEP conversion still works; 113 tests green.

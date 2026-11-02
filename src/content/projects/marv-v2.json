@@ -1,0 +1,37 @@
+{
+  "type": "project",
+  "id": "marv-v2",
+  "title": "MARV V2",
+  "status": "In Manufacturing",
+  "order": 6,
+  "image": "",
+  "model3d": "",
+  "media": [
+    {
+      "type": "model",
+      "src": "/MARV-V2-PCB.glb",
+      "caption": "MARV V2 Rev 1, exported from KiCad with copper, solder mask and silkscreen"
+    },
+    {
+      "type": "image",
+      "src": "/marv-v2-front.webp",
+      "alt": "MARV V2 Rev 1 PCB front side inside its 72 mm manufacturing frame, with the RP2354B, microSD socket, USB-C and IO headers",
+      "caption": "Rev 1, front: everything JLCPCB assembles sits on this side"
+    },
+    {
+      "type": "image",
+      "src": "/marv-v2-back.webp",
+      "alt": "MARV V2 Rev 1 PCB back side with the sensor table, ESC pad row and SWD header",
+      "caption": "Rev 1, back: sensor bus table, ESC pad row and SWD header"
+    }
+  ],
+  "description": "The second revision of the MARV flight computer, now final and in production at JLCPCB. An RP2354B flight controller for rockets and drones with an ICM-45686 IMU, an LSM6DSK320X ±320 g high-g IMU and a BMP581 barometer, each on its own bus with data-ready interrupts, plus four-bit microSD logging over PIO, USB-C, a separate sensor LDO and a plug-on 5 V converter. Every change traces back to a problem V1 showed in flight. Drag to explore the board in 3D.",
+  "tags": [
+    "KiCad",
+    "PCB",
+    "RP2350",
+    "Avionics",
+    "Hardware Design"
+  ],
+  "github": "https://github.com/Lmx154/MARV-V2-PCB"
+}

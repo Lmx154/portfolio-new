@@ -5,16 +5,22 @@
   "status": "published",
   "date": "2026-09-19",
   "displayDate": "September 19, 2026",
-  "excerpt": "What a season of flying MARV V1 taught me, and how those lessons shaped the second revision of the flight computer.",
-  "readTime": "5 min read",
+  "excerpt": "What a season of flying MARV V1 taught me, how those lessons shaped the second revision of the flight computer, and how Rev 1 made it to manufacturing.",
+  "readTime": "6 min read",
   "tags": [
     "Avionics",
     "PCB Design",
     "Firmware Design",
     "Hardware Design"
   ],
-  "coverImage": "assets/marv-v2-pcb-top.webp",
+  "coverImage": "assets/marv-v2-rev1-front.webp",
   "blocks": [
+    {
+      "id": "blk_upd2611",
+      "type": "callout",
+      "variant": "success",
+      "text": "**Update, November 2026:** MARV V2 is final. Rev 1 is ordered and in production at JLCPCB. The final board and the manufacturing details are at the end of this post."
+    },
     {
       "id": "blk_s13gzck",
       "type": "heading",
@@ -86,7 +92,7 @@
       "items": [
         "**MCU power by the datasheet.** The RP2350 is particular about how its core-voltage regulator is set up, so V2 follows the datasheet's power routing closely.",
         "**Single-sided assembly.** All components sit on one side of the board, which lowers manufacturing cost.",
-        "**Newer, rocketry-oriented sensors.** An ICM-45686 IMU, an ADXL375 ±200 g accelerometer and a BMP581 barometer.",
+        "**Newer, rocketry-oriented sensors.** An ICM-45686 IMU on SPI0, an LSM6DSK320X secondary IMU with a ±320 g high-g channel on SPI1, and a BMP581 barometer on I2C1. Each sensor has its own bus, so no sensor ever waits on another one's traffic.",
         "**Easier external I/O.** Standard 2.54 mm headers replace V1's small solder pads.",
         "**4-bit SD card over PIO.** Higher SD throughput, SD traffic kept independent of sensor SPI traffic, and both hardware SPI controllers left free for the IMUs."
       ]
@@ -131,32 +137,55 @@
     {
       "id": "blk_acwrmfb",
       "type": "paragraph",
-      "text": "After evaluating the FC3V2, I made a few changes to our board. I kept what worked well on MARV V1: the latching SD card slot, support for an external compass and GPS, and the ESC pad row. I left out the FC3V2's large via-stitched battery pads, since MARV won't connect directly to a battery in either of our setups. It will be powered either from the ESC pad row when mounted on a quadcopter, or from a boost-buck converter on a 1S pack. That power configuration may still change, but it's the plan for now. MARV V2 also keeps an expandable PSRAM footprint: during firmware experiments, running the entire firmware from PSRAM instead of flash improved performance significantly."
+      "text": "After evaluating the FC3V2, I made a few changes to our board. I kept what worked well on MARV V1: the latching SD card slot, support for an external compass and GPS, and the ESC pad row. I left out the FC3V2's large via-stitched battery pads, since MARV won't connect directly to a battery in either of our setups. In the final design, power comes from a purchased 5 V converter module that plugs onto a three-pin header (J17), so the converter rides on the flight controller and the two mount as one unit. On a quadcopter, raw battery voltage comes in through the ESC pad row and feeds the converter, and USB-C can power the board on the bench. A boost module for 1S setups can use the same header, but it still needs fit and load testing. MARV V2 also keeps an optional QSPI footprint on the back for PSRAM: during firmware experiments, running the entire firmware from PSRAM instead of flash improved performance significantly."
     },
     {
       "id": "blk_h6board",
       "type": "heading",
       "level": 2,
-      "text": "The V2 board"
+      "text": "The final board"
     },
     {
       "id": "blk_0jgzvzh",
       "type": "image",
-      "src": "assets/marv-v2-pcb-top.webp",
-      "alt": "3D render of the MARV V2 PCB, top side, showing the MCU, SD card slot, USB-C port and pin headers",
-      "caption": "MARV V2 PCB render, top side"
+      "src": "assets/marv-v2-rev1-front.webp",
+      "alt": "MARV V2 Rev 1 PCB front side inside its 72 mm manufacturing frame, with the RP2354B, microSD socket, USB-C, J17 converter header and IO headers",
+      "caption": "MARV V2 Rev 1, front. JLCPCB assembles everything on this side."
     },
     {
       "id": "blk_41gky7d",
       "type": "image",
-      "src": "assets/marv-v2-pcb-bottom.webp",
-      "alt": "3D render of the MARV V2 PCB, bottom side, with the sensor table and ESC pad row",
-      "caption": "MARV V2 PCB render, bottom side"
+      "src": "assets/marv-v2-rev1-back.webp",
+      "alt": "MARV V2 Rev 1 PCB back side with the sensor and bus table, ESC pad row, SWD header and designer credit",
+      "caption": "MARV V2 Rev 1, back: the sensor and bus table, the ESC pad row and the SWD header."
     },
     {
-      "id": "blk_7r1b96k",
+      "id": "blk_mfg_h",
+      "type": "heading",
+      "level": 2,
+      "text": "Into manufacturing"
+    },
+    {
+      "id": "blk_mfg_p1",
       "type": "paragraph",
-      "text": "Only a few changes remain before MARV V2 goes to manufacturing. Thanks for reading, and I hope you found it useful!"
+      "text": "Rev 1 is routed, checked and ordered. ERC is clean. DRC reports zero unconnected nets and zero schematic-to-PCB parity issues, and the few remaining DRC errors were reviewed and accepted. Most of them are the ground vias in the RP2354B's exposed pad, which follow JLCPCB's via-in-pad rule. The board sits inside a 72 × 72 mm manufacturing frame that gives the assembly line rails and fiducials to work with."
+    },
+    {
+      "id": "blk_mfg_p2",
+      "type": "paragraph",
+      "text": "The order is five four-layer boards on 1.6 mm FR-4 with an ENIG finish, so the 0.4 mm-pitch QFN and the LGA sensors land on flat pads, and every board gets a flying-probe electrical test. JLCPCB assembles the surface-mount parts on the front side of two of them, and I'll solder the 2.54 mm headers myself. The repo keeps an order record with the exact upload files, their checksums and every option I selected, so Rev 1 can be reordered exactly."
+    },
+    {
+      "id": "blk_mfg_img",
+      "type": "image",
+      "src": "assets/marv-v2-rev1-in-production.webp",
+      "alt": "JLCPCB order status page showing MARV-V2-panel_Y12 in production, with the BOM and positions files and production progress",
+      "caption": "Rev 1 in production at JLCPCB"
+    },
+    {
+      "id": "blk_mfg_p3",
+      "type": "paragraph",
+      "text": "Next is bring-up: power rails first, then each sensor bus in turn, then the firmware V2 was designed around, where every sensor sample arrives on a data-ready interrupt. The schematic, board, power simulations and design checks are open source in the [MARV-V2-PCB repository](https://github.com/Lmx154/MARV-V2-PCB). Thanks for reading, and I hope you found it useful!"
     }
   ]
 }

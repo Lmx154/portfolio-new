@@ -8,7 +8,7 @@
 import * as occtMod from 'occt-import-js';
 import { Document, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, weld, quantize } from '@gltf-transform/functions';
+import { dedup, flatten, join, weld, quantize } from '@gltf-transform/functions';
 import fs from 'node:fs';
 
 const [, , inPath, outPath] = process.argv;
@@ -109,7 +109,20 @@ else {
   process.exit(1);
 }
 
-await doc.transform(dedup(), weld(), quantize());
+// KiCad's GLB export leaves metallicFactor unset, which glTF reads as 1.0
+// (fully metallic), so boards render near-black under the site's soft
+// environment light. Give KiCad exports the matte values the site's other
+// boards use, and make the nearly opaque silkscreen opaque (no blending).
+if (String(doc.getRoot().getAsset().extras?.generator ?? '').startsWith('KiCad')) {
+  for (const mat of doc.getRoot().listMaterials()) {
+    mat.setMetallicFactor(0.05).setRoughnessFactor(0.5);
+    if (mat.getAlphaMode() === 'BLEND' && mat.getAlpha() >= 0.89) mat.setAlpha(1).setAlphaMode('OPAQUE');
+  }
+}
+
+// flatten + join merge every primitive that shares a material into one draw
+// call (a KiCad board arrives as ~17k primitives, one per track/pad/part).
+await doc.transform(dedup(), flatten(), join(), weld(), quantize());
 const glb = await io.writeBinary(doc);
 fs.writeFileSync(outPath, glb);
 console.log(`wrote ${outPath} (${(glb.byteLength / 1048576).toFixed(2)} MB)`);
