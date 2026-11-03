@@ -1,0 +1,49 @@
+{
+  "type": "project",
+  "id": "two-wheeler",
+  "title": "Autonomous Two-Wheeler",
+  "status": "In Progress",
+  "order": 4,
+  "image": "",
+  "model3d": "",
+  "media": [
+    {
+      "type": "model",
+      "src": "/two-wheeler.glb",
+      "caption": "The full robot from the CAD assembly: frame, motors, electronics, Pi 5 stack, camera, ToF arm and battery"
+    },
+    {
+      "type": "image",
+      "src": "/two-wheeler-gazebo-maze.webp",
+      "alt": "Gazebo scene of the two-wheeled robot inside a grid maze of gray walls",
+      "caption": "Gazebo: the robot in a grid maze with SLAM running"
+    },
+    {
+      "type": "image",
+      "src": "/two-wheeler-slam-map.webp",
+      "alt": "RViz window showing an occupancy grid map of maze corridors with black walls and the camera floor scan as a green line",
+      "caption": "The slam_toolbox map built from the camera floor scan, in RViz"
+    },
+    {
+      "type": "video",
+      "src": "/two-wheeler-tof-maze.mp4",
+      "caption": "Navigating an irregular maze with only the time-of-flight sensor, before vision"
+    },
+    {
+      "type": "image",
+      "src": "/two-wheeler-test-prints.webp",
+      "alt": "Workbench with the printed battery box holding three 18650 cells, a heat-set insert test coupon, the two perfboards with the Pico 2 and power electronics, and a Raspberry Pi 5",
+      "caption": "Test prints and electronics: the battery box, the heat-set insert coupon and both perfboards"
+    }
+  ],
+  "description": "A self-balancing two-wheeled robot built as an autonomy testbed. The real-time layer, a Rust LQR balance controller and a collision guard, is written for a Pico 2. A Raspberry Pi 5 handles camera perception and SLAM, and a servo-swept time-of-flight sensor scans for mapping. In Gazebo simulation, the stack balances, drives on command, avoids obstacles, solves mazes, stands back up after a fall and builds a map, and each layer is scored against ground truth. Next: real SLAM, and printing the robot. Drag to explore the full CAD model in 3D.",
+  "tags": [
+    "Robotics",
+    "Autonomy",
+    "SLAM",
+    "ROS 2",
+    "Rust",
+    "Gazebo",
+    "CAD"
+  ]
+}

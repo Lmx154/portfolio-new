@@ -1,0 +1,308 @@
+{
+  "type": "blog",
+  "id": "two-wheeler-progress-update",
+  "title": "Two-Wheeler Update: From a Balancing Sim to a First SLAM Map",
+  "status": "published",
+  "date": "2026-11-03",
+  "displayDate": "November 3, 2026",
+  "excerpt": "Building the autonomy stack one tested layer at a time in Gazebo: balance, driving, ToF collision avoidance, maze navigation, self-righting, camera floor sensing and a first SLAM map, plus what the first test prints taught me.",
+  "readTime": "13 min read",
+  "tags": [
+    "Robotics",
+    "Autonomy",
+    "SLAM",
+    "Simulation",
+    "ROS 2",
+    "Rust",
+    "3D Printing"
+  ],
+  "coverImage": "assets/gazebo-maze-slam.webp",
+  "blocks": [
+    {
+      "id": "blk_dfg93bj",
+      "type": "paragraph",
+      "text": "In the [first post](/blog/two-wheeler-autonomy-platform) I laid out the plan for my self-balancing two-wheeler: hard real-time balance control on a Pico 2, perception on a Raspberry Pi 5, and a servo-swept time-of-flight sensor for mapping. Since then, two things have been happening in parallel. The printer has been turning out test parts, and while it runs I've been building the autonomy stack in simulation, one layer at a time."
+    },
+    {
+      "id": "blk_0zeqgxg",
+      "type": "paragraph",
+      "text": "Every layer had to pass a scored test before the next one started: a grader that compares the robot's behavior against ground truth, plus a negative control that has to fail, so a passing test actually means something. This post goes through those layers in the order they came online."
+    },
+    {
+      "id": "blk_l0m5iec",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Stay upright.",
+        "Drive where it's told.",
+        "Stop before hitting things, using only the ToF sensor.",
+        "Find its way out of a maze, still using only the ToF sensor.",
+        "Get back up after falling over.",
+        "Pick a perception stack that a CPU-only Pi 5 can actually run.",
+        "See the floor with the camera.",
+        "Build a map with SLAM."
+      ]
+    },
+    {
+      "id": "blk_hrende2",
+      "type": "heading",
+      "level": 2,
+      "text": "A simulator that mirrors the hardware"
+    },
+    {
+      "id": "blk_v9bdh1i",
+      "type": "paragraph",
+      "text": "The simulator runs Gazebo Harmonic with ROS 2 Jazzy. The robot model is exported straight from the CAD repo, so the simulated robot has the same geometry as the one I'm printing. It weighs 1.4 kg, my estimate for the fully equipped robot, and has the real wheel radius, an IMU sampled at about 1 kHz, the ToF sensor on its servo arm, and the camera at its real height."
+    },
+    {
+      "id": "blk_r9773f2",
+      "type": "paragraph",
+      "text": "The software is split the same way as on the real robot. A program called `sim-pico` plays the part of the Pico 2 and its TB6612 motor driver: it runs the balance controller once per IMU sample and turns the controller's output into wheel torque through a model of the gear motors. Everything above that runs as ROS 2 nodes on the \"Pi\" side, and those nodes only send motion commands down, never motor commands. The controller itself lives in a `no_std` Rust crate that doesn't depend on the simulator, and it's also built for the RP2350's target, so the code that balances the simulated robot is the code that will go on the Pico."
+    },
+    {
+      "id": "blk_4eszdsv",
+      "type": "heading",
+      "level": 2,
+      "text": "Step 1: Staying upright"
+    },
+    {
+      "id": "blk_7ex53h7",
+      "type": "paragraph",
+      "text": "The balance controller is an LQR with an integral state, running once per IMU sample, 1,000 times per simulated second. I didn't want gains that only work for one guess at the robot, so the test suite runs seven versions of it: the nominal robot, plus center-of-mass heights of 75 and 110 mm, masses of 1.2 and 1.6 kg, and battery voltages from 9.6 to 12.6 V. All 22 graded scenarios pass with the same gains. That includes recovering from 0.3 N·s shoves that tip the robot 15 to 19°, and cutting the motors when it tilts past about 40°, so a robot that has already fallen doesn't keep spinning its wheels."
+    },
+    {
+      "id": "blk_p8j55w0",
+      "type": "paragraph",
+      "text": "I made the controller softer on purpose. A more aggressive tuning limit-cycled with only 2 ms of actuation delay, and the real robot will have more delay than the simulator. The gentler gains tolerate 10 to 20 ms. One simulator quirk also came up: Gazebo's first IMU sample has almost no gravity in it, which would seed the tilt estimate with garbage, so `sim-pico` ignores samples until the measured acceleration looks like gravity."
+    },
+    {
+      "id": "blk_u6zuoic",
+      "type": "heading",
+      "level": 2,
+      "text": "Step 2: Driving where it's told"
+    },
+    {
+      "id": "blk_ytde0v3",
+      "type": "paragraph",
+      "text": "Next, the robot had to follow velocity and turn-rate commands while balancing. I scored it on four patterns at 0.2 m/s: a 0.5 m-radius circle, a 1 m square, a zigzag and a 2 m straight line."
+    },
+    {
+      "id": "blk_yclntk3",
+      "type": "paragraph",
+      "text": "The first run failed. The circle was off by 18.7 cm and the heading had drifted 30.9° by the end. The cause was the heading estimate: it came from wheel encoders, and the flat edges of the tires scrubbed in turns, so the encoders under-reported every turn by 3 to 12%. I switched to a heading integrated from the gyro, with a bias estimate, which tracks ground truth to within 0.15° per 90° turn. I also rounded the simulated tire. After that, all four patterns stayed within 5 cm and 5° (circle 1.4 cm, square 3.8 cm, zigzag 3.9 cm, line 3.1 cm). I also cut the acceleration limit from 0.3 to 0.2 m/s², because hard starts were tipping the robot to 5.8°."
+    },
+    {
+      "id": "blk_8lrjj9m",
+      "type": "heading",
+      "level": 2,
+      "text": "Step 3: Don't hit anything"
+    },
+    {
+      "id": "blk_1t46jg3",
+      "type": "paragraph",
+      "text": "The ToF sensor is modeled on the VL53L1X: 30 readings a second, each one a single distance over a 27° cone. The collision guard caps the robot's speed at what it can brake from in the distance it can see, and stops it 25 cm short of an obstacle. It runs on the Pico side, not the Pi, so a crash in the perception software can't switch it off."
+    },
+    {
+      "id": "blk_o5yah87",
+      "type": "paragraph",
+      "text": "In testing, the robot stopped about 24 cm from a wall, a cube and a pole, including when it approached the wall at 0.4 m/s. The negative control runs the same test with the guard off. The robot hits the wall and falls over, which shows the test can actually tell the difference."
+    },
+    {
+      "id": "blk_1w2i9yo",
+      "type": "paragraph",
+      "text": "The first lesson was about the robot's own motion. A balancing robot is always pitching, and with the full 27° cone, the sensor saw the floor on every single frame. Restricting it to the upper part of the cone fixed that. The cost is a blind spot for anything low: the guard can't see a 6 cm-tall box, and the robot drove into one. That's one of the jobs the camera will have to take on."
+    },
+    {
+      "id": "blk_h8o3nwv",
+      "type": "heading",
+      "level": 2,
+      "text": "Step 4: Mazes, with only the ToF sensor"
+    },
+    {
+      "id": "blk_txfucz8",
+      "type": "paragraph",
+      "text": "With the guard in place, the robot needed somewhere to navigate. A maze generator builds seeded random mazes with 0.7 m cells. I started at 0.6 m, but a wall one cell ahead then fell inside the guard's stopping distance. The first navigator is deliberately simple. It stops at the center of each cell, swings the servo to look left, ahead and right, decides where the walls are and follows the right-hand rule. The grader checks against ground truth whether the robot got out, how close it came to any wall, whether it stayed balanced the whole time, and whether every wall it reported is really there. It passed three different mazes, with zero mismatches between the walls it reported and the real ones."
+    },
+    {
+      "id": "blk_95rkfrs",
+      "type": "paragraph",
+      "text": "Then I made the mazes harder: rings of curved walls, and warped grids with pillars, where the right-hand rule doesn't help. The second navigator builds a map instead. It sweeps the servo from −90° to +90° in 10° steps, builds a 5 cm occupancy grid, plans a path to the nearest edge of the explored area, and moves in short stop, scan and drive legs. It got out of all three maze styles and mapped 98.6 to 99.7% of the walls."
+    },
+    {
+      "id": "blk_3w14uip",
+      "type": "paragraph",
+      "text": "It didn't work the first time. Because the sensor reads across a wide cone, a wall seen at an angle produces only weak evidence, so wall corners stayed \"unknown\" in the map. The planner treated unknown cells as free, and in one run it cut a corner 1.9 cm from a wall. The fix was to treat unknown cells as obstacles until a scan proves them free. The video shows this stage: navigation and collision avoidance with only the ToF sensor, no vision yet."
+    },
+    {
+      "id": "blk_k3t898a",
+      "type": "video",
+      "src": "videos/tof-collision-avoidance.mp4",
+      "caption": "Gazebo: the robot working through an irregular maze with only the time-of-flight sensor, before any vision was added",
+      "controls": true,
+      "muted": true,
+      "autoplay": false,
+      "loop": false
+    },
+    {
+      "id": "blk_cq163v4",
+      "type": "heading",
+      "level": 2,
+      "text": "Step 5: Getting back up"
+    },
+    {
+      "id": "blk_fmuc9ip",
+      "type": "paragraph",
+      "text": "A balancing robot will fall over, so it should be able to stand back up on its own. Before writing any code, I checked whether that was physically possible. It is: from either bumper, at about 44° of tilt, and even from lying face-down. What limits it is the motors' back-EMF at high wheel speed, not their torque."
+    },
+    {
+      "id": "blk_dwqwl03",
+      "type": "paragraph",
+      "text": "The stand-up logic is a small state machine in the balance crate. A fall is latched. After the robot has been lying still for a second, it spins its wheels up and drives at full power until it's within 20° of upright, then hands control back to the balance controller without a jump in the motor command. After three failed attempts it gives up instead of thrashing. Lying face-down, it stood up in one attempt in 0.58 s, and it also recovered after a full somersault."
+    },
+    {
+      "id": "blk_g1xivm0",
+      "type": "paragraph",
+      "text": "One bug only showed up when I watched a run in the GUI. After a tumble, the tilt estimate was still settling when the stand-up started, so the controller took over with a tilt estimate that was a few degrees off. Re-seeding the tilt estimate from the accelerometer at the start of a stand-up cut that error from 3.18° to 0.46°."
+    },
+    {
+      "id": "blk_rljz42r",
+      "type": "heading",
+      "level": 2,
+      "text": "Step 6: What can a Pi 5 actually run?"
+    },
+    {
+      "id": "blk_hp0t1mq",
+      "type": "paragraph",
+      "text": "Before writing any vision code, I did a trade study, because the Pi 5 has no GPU or NPU to run models on. The conclusion was to use small CNNs and floor geometry, not foundation models. Depth Anything V2 Small was estimated at 0.5 to 1.8 s per frame, far too slow for a robot that has to react, and vision-language models at 2 to 20 s per answer are only good for slow, advisory decisions. The plan is:"
+    },
+    {
+      "id": "blk_5zyus7w",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Fast and metric:** classic floor segmentation from the camera, which gives real distances to obstacles because the camera's height and pitch are known.",
+        "**Slower and richer:** a small relative-depth CNN at a few hertz, scaled to real distances using the ToF readings and the floor.",
+        "**Optional:** a small object detector at a low rate."
+      ]
+    },
+    {
+      "id": "blk_uy5lyo9",
+      "type": "paragraph",
+      "text": "All of this is still an estimate. Only one of the candidate models has been timed on a Pi, so benchmarking on the real board comes before I commit to any of it."
+    },
+    {
+      "id": "blk_04jkudp",
+      "type": "heading",
+      "level": 2,
+      "text": "Step 7: Seeing the floor"
+    },
+    {
+      "id": "blk_4ws28fo",
+      "type": "paragraph",
+      "text": "The floor scanner learns what the floor looks like from a patch just in front of the robot. Then, in every column of the image, it finds where the floor ends. The camera's height and pitch turn that image row into a distance, and the result is published as a 64-beam laser scan, so any ROS tool that takes a lidar can use it. It takes 1.37 ms per frame on one CPU thread."
+    },
+    {
+      "id": "blk_46q282z",
+      "type": "paragraph",
+      "text": "The balancing problem came back here. The range error grows with the square of the distance divided by the camera height, so a small error in pitch becomes a large error in range. With perfect pitch from the simulator, 99.9% of the ranges were within tolerance (5 cm or 5%, whichever is larger, out to 2 m). With the robot's own pitch estimate, which carries an accelerometer bias of about half a degree that changes every launch, only 23 to 84% were. The fix was to use the ToF sensor to calibrate the camera: whenever the robot is holding still, compare the ToF distance to the floor-scan distance in the same direction and solve for the pitch offset. In live runs, that brought it back to about 96 to 98% within tolerance."
+    },
+    {
+      "id": "blk_8gzyygk",
+      "type": "paragraph",
+      "text": "A small mono-depth network, MiDaS v2.1 Small, fills in what the floor scan can't see. On its own its scale is meaningless, so it's anchored to the floor and the ToF readings. Combining both anchors beat either one alone, with a mean relative error of 0.22 to 0.27 against 0.37 to 0.38 with only the ToF."
+    },
+    {
+      "id": "blk_n383a2l",
+      "type": "heading",
+      "level": 2,
+      "text": "Step 8: First SLAM map"
+    },
+    {
+      "id": "blk_8vc7a03",
+      "type": "paragraph",
+      "text": "The last layer so far is mapping. slam_toolbox builds the map from the camera's floor scan and the wheel odometry while the maze navigator drives a grid maze. The scoring compares the map with the maze's real walls: 99.2% of the cells the map marks as occupied are within 10 cm of a real wall, and 89.3% of the real wall faces show up in the map. As a negative control, the same map shifted out of place has to fail, and it does."
+    },
+    {
+      "id": "blk_sucgqgs",
+      "type": "image",
+      "src": "assets/gazebo-maze-slam.webp",
+      "alt": "Gazebo scene of the two-wheeled robot inside a grid maze of gray walls",
+      "caption": "The robot in the Gazebo grid maze with SLAM running"
+    },
+    {
+      "id": "blk_fopwl7y",
+      "type": "image",
+      "src": "assets/rviz-slam-map.webp",
+      "alt": "RViz window showing an occupancy grid map of maze corridors in light gray with black walls, the camera floor scan as a green line at the right edge, and the map and odometry frames",
+      "caption": "What the robot built: the slam_toolbox occupancy map in RViz, with the camera floor scan in green"
+    },
+    {
+      "id": "blk_byuwc2z",
+      "type": "paragraph",
+      "text": "Those are ideal conditions, though, and I want to be clear about what this does and doesn't prove. In this baseline, scan matching and loop closure are turned off, so the map is the floor scans placed at the odometry poses. It shows that the floor scanner produces walls in the right places. It doesn't yet show that SLAM corrects drift. The simulator is also generous: the floor and walls are flat, uniform colors, the odometry is clean, and the simulated ToF is less noisy than the datasheet says. So the next objective is real SLAM: scan matching and loop closure on, so the robot corrects its own drift from what it sees instead of trusting its odometry. My first try with scan matching on made the heading jump about 30° the moment the robot started moving, so that's where the work starts."
+    },
+    {
+      "id": "blk_usxegit",
+      "type": "heading",
+      "level": 2,
+      "text": "Meanwhile, on the printer"
+    },
+    {
+      "id": "blk_m8t1370",
+      "type": "paragraph",
+      "text": "Every printed part is PETG. Before printing the whole robot, I've been printing the parts most likely to go wrong and fitting them on the real chassis."
+    },
+    {
+      "id": "blk_0bg0wq2",
+      "type": "image",
+      "src": "assets/test-prints-bench.webp",
+      "alt": "Workbench with the printed black battery box holding three 18650 cells, a black heat-set insert test coupon, the two perfboards with the Pico 2 and the power electronics, and a Raspberry Pi 5",
+      "caption": "Test prints next to the electronics: the battery box with its three cells (top right) and the heat-set insert test coupon (bottom right)"
+    },
+    {
+      "id": "blk_t5iy4ww",
+      "type": "paragraph",
+      "text": "**The battery box fits perfectly.** A bit of foam tape will stop the cells from shifting while the robot rocks back and forth."
+    },
+    {
+      "id": "blk_62uf9w0",
+      "type": "paragraph",
+      "text": "**Heat staking didn't hold up.** My original plan was to hold the boards on with plastic nubs melted over like rivets. In practice they were brittle and broke off far too easily. Every nub is now replaced with a brass heat-set insert and a screw: M2 inserts for the perfboards, the ToF sensor and the camera, and M2.5 inserts for the Pi 5. The heat from the insert softens the plastic around it, so the posts got thicker, with at least 2 mm of wall around each insert. The holes also go all the way through, so melted filament has somewhere to go instead of clogging the threads. Since FDM holes print a little undersized, the test coupon in the photo carries each insert size at three hole diameters, plus a row of holes printed sideways into a wall. The winners were 2.9 mm for M2 inserts in posts, 3.3 mm for M2.5 inserts in posts, and 3.0 mm for M2 inserts in a wall. Those are the sizes going into the real parts."
+    },
+    {
+      "id": "blk_zmum2m3",
+      "type": "image",
+      "src": "assets/battery-cover-failed-fit.webp",
+      "alt": "A black printed plate held over the robot's frame, with its slotted bolt holes at the bottom edge falling short of the holes in the red bracket underneath",
+      "caption": "A failed fit: the battery plate came out too short to reach the bracket holes it has to bolt to"
+    },
+    {
+      "id": "blk_sq39zyg",
+      "type": "paragraph",
+      "text": "**The battery plate was too short.** This is the top deck that closes the battery box and bolts the pack to the frame. Its slots lined up with the middle row of holes in the frame's 90° brackets, but a bolt in that row leaves no room to screw a nut onto the bolt next to it, so only the outermost row can actually be used. I measured those holes at 118 mm apart, edge to edge. The redesigned plate grows from 108 mm to 134 mm long, with the slots moved out to match. That's exactly why I print test parts first: the CAD had the holes in the right places, but it picked holes that can't be used once the nuts go on."
+    },
+    {
+      "id": "blk_7i78zm8",
+      "type": "heading",
+      "level": 2,
+      "text": "What's next"
+    },
+    {
+      "id": "blk_srmihdu",
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "**Next objective: real SLAM.** Scan matching and loop closure on, so the map corrects the robot's drift instead of trusting its odometry. It will be fed by the floor scan, the depth network and the ToF together, and tested with deliberately corrupted odometry to prove it's actually correcting something.",
+        "**Make the simulator less forgiving,** so real SLAM is tested under realistic conditions: a ToF model closer to the real VL53L1X, with a narrower field of view, an offset, noise and no returns past 2 m, plus camera noise and blur, odometry error and a realistic wood floor.",
+        "**Benchmark perception on the real Pi 5** before committing to any model.",
+        "**Finish the prints:** reprint the parts with the winning insert hole sizes and measure the real center of mass.",
+        "**Firmware on the Pico 2,** with the same balance crate that has been running in the simulator."
+      ]
+    },
+    {
+      "id": "blk_s8n3df0",
+      "type": "paragraph",
+      "text": "So far, every layer has followed the same pattern: build the simplest version that could work, score it against ground truth, find out exactly why it fails, and fix that. The simulated robot balances, drives, avoids obstacles, gets through mazes, stands back up and maps. Next up is real SLAM, under harder conditions, while the real robot gets printed."
+    }
+  ]
+}

@@ -3,7 +3,7 @@
   "profileImage": "/profile.jpg",
   "profileAlt": "Luis Martinez",
   "paragraphs": [
-    "I'm Luis Martinez, an avionics and software engineer based in Weslaco, Texas. I build flight software, embedded hardware, and the guidance, navigation and control systems that tie them together. I hold a B.S. in Computer Science from the University of Texas Rio Grande Valley (UTRGV).",
+    "I'm Luis Martinez, a robotics and software engineer based in Weslaco, Texas. I build flight software, embedded hardware, and the guidance, navigation and control systems that tie them together. I hold a B.S. in Computer Science from the University of Texas Rio Grande Valley (UTRGV).",
     "I got into programming by modding games and building simple websites, and that curiosity never left. Before UTRGV, I earned an Associate's degree in Computer Science from South Texas College and worked as an IT analyst, supporting networks, hardware and backups for small businesses.",
     "From 2024 to 2026 I was the Avionics Lead for Rocket Launchers at UTRGV, leading the team's flight software, embedded hardware, telemetry and integration work. I developed the MARV flight computer, worked with the structures, propulsion and recovery leads to bring our avionics to flight readiness, and took our systems to competitions including Lone Star and IREC. Along the way I competed in hackathons and made a habit of learning by building.",
     "Today I'm focused on flight control systems and localization for robotics, including the next revision of MARV. This site documents that work: the setbacks as much as the successes."

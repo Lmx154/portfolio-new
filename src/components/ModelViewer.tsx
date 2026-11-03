@@ -101,10 +101,13 @@ export default function ModelViewer({
         o.receiveShadow = true;
       });
 
-      // Lay flat: rotate the thinnest axis (board normal) up to +Y.
+      // Lay flat: rotate the thinnest axis (board normal) up to +Y. A model
+      // authored standing up (glTF scene extras `upright: true`) keeps its pose.
       const dims = [size.x, size.y, size.z];
       const thin = dims.indexOf(Math.min(dims[0], dims[1], dims[2]));
-      if (thin === 0) orient.rotation.z = Math.PI / 2; // X-thin → up
+      if (object.userData.upright === true) {
+        // already Y-up
+      } else if (thin === 0) orient.rotation.z = Math.PI / 2; // X-thin → up
       else if (thin === 2) orient.rotation.x = -Math.PI / 2; // Z-thin → up
       scene.updateMatrixWorld(true);
 

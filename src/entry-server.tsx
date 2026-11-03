@@ -63,9 +63,9 @@ export function render(url: string): Promise<string> {
   });
 }
 
-const SITE_TITLE = 'Luis Martinez - Avionics & Software Engineer';
+const SITE_TITLE = 'Luis Martinez - Robotics & Software Engineer';
 const SITE_DESCRIPTION =
-  'Luis Martinez — avionics and software engineer building flight software, embedded hardware and GNC systems.';
+  'Luis Martinez — robotics and software engineer building flight software, embedded hardware and GNC systems.';
 
 /**
  * Tags for `<head>` of the prerendered file for `route`, as one HTML string
