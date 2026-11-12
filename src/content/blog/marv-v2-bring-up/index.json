@@ -1,0 +1,310 @@
+{
+  "type": "blog",
+  "id": "marv-v2-bring-up",
+  "title": "MARV V2 Is In: Bring-Up, Rust Drivers and a First Ground Station",
+  "status": "published",
+  "date": "2026-11-12",
+  "displayDate": "November 12, 2026",
+  "excerpt": "Rev 1 of the MARV V2 flight computer arrived from JLCPCB. Assembly, a bring-up suite that checks every device on the board, stress tests, one Rust driver crate per device, battery power, a first ground station, and what changes for Rev 2.",
+  "readTime": "10 min read",
+  "tags": [
+    "Avionics",
+    "Embedded Rust",
+    "Hardware Bring-Up",
+    "Firmware Design",
+    "Testing"
+  ],
+  "coverImage": "assets/first-test.webp",
+  "blocks": [
+    {
+      "id": "blk_bu_intro",
+      "type": "paragraph",
+      "text": "MARV V2 Rev 1 is in. In the [last post](/blog/marv-v2) I covered why the flight computer needed a second revision and how Rev 1 got to manufacturing. This one starts when the box arrived: assembly, bringing up every device on the board, the Rust drivers written for each of them, the first battery and ESC tests, a first ground station, and the two changes going into Rev 2."
+    },
+    {
+      "id": "blk_bu_h_unbox",
+      "type": "heading",
+      "level": 2,
+      "text": "Unboxing"
+    },
+    {
+      "id": "blk_bu_unbox_p",
+      "type": "paragraph",
+      "text": "The boards arrived in JLCPCB's blue box. Before soldering anything, I checked both the assembled boards and the bare ones for shipping damage. Everything looked fine."
+    },
+    {
+      "id": "blk_bu_img_box",
+      "type": "image",
+      "src": "assets/jlcbox.webp",
+      "alt": "Blue JLCPCB shipping box on a dark table",
+      "caption": "Rev 1 arrives from JLCPCB"
+    },
+    {
+      "id": "blk_bu_img_front",
+      "type": "image",
+      "src": "assets/pcba-and-pcbfront.webp",
+      "alt": "Two MARV V2 boards in their manufacturing frames: a bare PCB on top and a JLCPCB-assembled board below, both front side up",
+      "caption": "A bare board (top) and an assembled board (bottom), still in their 72 mm manufacturing frames"
+    },
+    {
+      "id": "blk_bu_img_back",
+      "type": "image",
+      "src": "assets/pcba-and-pcbback.webp",
+      "alt": "A bare MARV V2 board back side up, showing the sensor and bus table and the ESC pad row, above an assembled board front side up",
+      "caption": "The back of a bare board (top), with the sensor and bus table and the ESC pad row, next to an assembled front (bottom)"
+    },
+    {
+      "id": "blk_bu_h_asm",
+      "type": "heading",
+      "level": 2,
+      "text": "Assembly"
+    },
+    {
+      "id": "blk_bu_asm_p1",
+      "type": "paragraph",
+      "text": "JLCPCB placed every surface-mount part on the front side, so assembly on my end came down to two jobs. First I soldered all the 2.54 mm header pins. Then I soldered on the PSRAM: a 16 MB [IS66WVS16M8FBLL](https://www.sparkfun.com/16-mb-psram-ic-is66wvs16m8fbll.html) from SparkFun in a SOIC-8 package."
+    },
+    {
+      "id": "blk_bu_asm_p2",
+      "type": "paragraph",
+      "text": "Rev 1 left the PSRAM as an optional, empty footprint, so it was the one chip I placed by hand. Before soldering it, I pulled up the chip's datasheet next to my footprint and triple-checked the pinout and pin 1. The PSRAM shares the QSPI clock and data lines with the flash the RP2354B boots from, so a mistake there would cause trouble well beyond the PSRAM."
+    },
+    {
+      "id": "blk_bu_img_first",
+      "type": "image",
+      "src": "assets/first-test.webp",
+      "alt": "Assembled MARV V2 powered over USB-C with a 5 V converter module on J17, a microSD card in its socket and SWD debug wires attached, with the loose SOIC-8 PSRAM chip lying beside the board",
+      "caption": "First power-up over USB-C, with the plug-on 5 V converter on J17 and the SWD debug lines attached. The PSRAM chip is still waiting next to the board."
+    },
+    {
+      "id": "blk_bu_h_bringup",
+      "type": "heading",
+      "level": 2,
+      "text": "Bring-up: proving every device"
+    },
+    {
+      "id": "blk_bu_bringup_p1",
+      "type": "paragraph",
+      "text": "With the board assembled, I worked with Claude to write a bring-up suite in embedded Rust, using Embassy on the RP2354B. It has eleven device tests. Each one builds as its own binary, and a combined `bringup` binary runs them all on the board in about 41 seconds. Every check prints the measured value next to the expected one and is marked PASS or FAIL. Checks that need a person, like confirming the LED's colors by eye, are marked MANUAL and never count as passes. The tests talk to each chip through raw register access, independent of any driver."
+    },
+    {
+      "id": "blk_bu_bringup_p2",
+      "type": "paragraph",
+      "text": "The final run passed 157 checks with 0 failures, 5 skips and 1 manual check, and ten runs in a row gave identical results. Here is what it covers:"
+    },
+    {
+      "id": "blk_bu_bringup_list",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Clocks:** the crystal oscillator is stable, both PLLs lock, and the system clock runs at 150 MHz.",
+        "**ICM-45686, LSM6DSK320X and BMP581:** the right chip IDs, sane data at rest, and interrupt pins routed and firing at the configured rates. Each sensor has its own bus: SPI0, SPI1 and I2C1.",
+        "**PSRAM:** the ISSI ID reads back, quad mode works, all 16 MiB are written and verified with two patterns and 0 mismatches, and the data is still intact after sitting idle.",
+        "**microSD:** native 4-bit mode with CRC16 verified on all four data lines, plus a write and restore of the card's last block.",
+        "**USB:** the board enumerates as a USB serial device and stays configured.",
+        "**LC76G GPS:** 60 valid NMEA sentences in 3 seconds at 115200 baud, a valid fix using 30 satellites, and a pulse-per-second signal within 9 ppm of one second.",
+        "**RGB LED:** the WS2812C data line checks out, and the colors were confirmed by eye."
+      ]
+    },
+    {
+      "id": "blk_bu_bringup_p3",
+      "type": "paragraph",
+      "text": "The external sensors came up too. Along with the GPS, a BMM350 magnetometer on the board's magnetometer port returned its chip ID and delivered every sample at 100 Hz and 400 Hz with no missed data-ready edges."
+    },
+    {
+      "id": "blk_bu_img_gps",
+      "type": "image",
+      "src": "assets/pcb-ext-pwr-test.webp",
+      "alt": "MARV V2 with the PSRAM soldered on, wired to an LC76G GPS module through the IO header, with a Raspberry Pi Pico 2 connected to the debug header",
+      "caption": "PSRAM soldered on and the LC76G GPS wired to the IO header. A Raspberry Pi Pico 2 acts as the SWD debug probe."
+    },
+    {
+      "id": "blk_bu_h_stress",
+      "type": "heading",
+      "level": 2,
+      "text": "Stress testing"
+    },
+    {
+      "id": "blk_bu_stress_p1",
+      "type": "paragraph",
+      "text": "Passing a bring-up check proves a device is connected. It doesn't prove the device can keep up in flight. So each sensor also got a stress test: run it at its maximum data rate, count every sample in hardware so any loss is exact, measure noise and timing, then hammer its bus and cycle its reset 100 times."
+    },
+    {
+      "id": "blk_bu_stress_list",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**ICM-45686** at 6.4 kHz: 128,573 of 128,573 samples, none lost, with a 0.72 µs standard deviation in the time between samples. Its SPI bus ran with 0 errors at clock rates up to 18.75 MHz.",
+        "**LSM6DSK320X** at its 7.68 kHz setting: 150,802 of 150,802 samples. A separate 30-minute soak made 4.5 million reads with nothing missed.",
+        "**BMP581** at its 240 Hz setting: 4,769 of 4,769 samples, with 0.49 Pa of pressure noise.",
+        "**Background load:** the SD card, PSRAM, USB, GPS and LED all running at once, with 0 bad SD CRCs, 0 PSRAM mismatches across 34 MiB, and 0 bad GPS sentences."
+      ]
+    },
+    {
+      "id": "blk_bu_stress_p2",
+      "type": "paragraph",
+      "text": "The last step runs all three sensors at full rate on top of that background load, and it doesn't pass yet. Reading both IMUs at full rate from one task on one core takes 83 to 88 percent of that core, and under the extra load a small fraction of samples were lost: 672 of about 1.15 million from the ICM-45686 and 4,864 of about 1.36 million from the LSM6DSK320X. In the driver tests, an IMU serviced from an interrupt executor or from the second core missed no samples at these rates. That result shaped the firmware plan at the end of this post."
+    },
+    {
+      "id": "blk_bu_h_crates",
+      "type": "heading",
+      "level": 2,
+      "text": "One crate per device"
+    },
+    {
+      "id": "blk_bu_crates_p1",
+      "type": "paragraph",
+      "text": "The bring-up suite proved the hardware, but the flight firmware needs real drivers. Every device got its own Rust crate in its own repository, kept separate from the firmware. The sensor drivers depend only on the standard `embedded-hal` traits. They own no pins, timers or executor, and they never read a clock: the application owns the interrupt pins and time-stamps each data-ready edge. Anything tied to the RP2350, like a PIO transport, sits behind a feature flag, and each crate's `hil` test is where the board-specific code lives."
+    },
+    {
+      "id": "blk_bu_crates_p2",
+      "type": "paragraph",
+      "text": "Keeping drivers out of the firmware keeps the firmware small and its test suite focused. Each driver carries its own tests, so the firmware's tests only need to cover how the pieces fit together. All the drivers follow one shared contract. Every error path has a test that injects a bus error at each transaction, every async call is tested for cancellation at each await point, decoders and converters are property-tested, register traffic is checked byte for byte against the datasheet, and the on-board suite has to pass ten times in a row. Across the crates that adds up to roughly a thousand host tests, plus the on-board suites."
+    },
+    {
+      "id": "blk_bu_crates_p3",
+      "type": "paragraph",
+      "text": "The crates and their headline on-board results:"
+    },
+    {
+      "id": "blk_bu_crates_list",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "[icm45686-rs](https://github.com/Lmx154/icm45686-rs): the ICM-45686 IMU over SPI. No missed samples at 6.4 kHz, and a sample read takes 16.3 µs at 18.75 MHz.",
+        "[lsm6dsk320x-rs](https://github.com/Lmx154/lsm6dsk320x-rs): the LSM6DSK320X IMU and its ±320 g accelerometer over SPI. A 30-minute soak at 7.68 kHz made 4.5 million reads with 0 lost.",
+        "[bmp581-rs](https://github.com/Lmx154/bmp581-rs): the BMP581 barometer over I2C, up to 496 Hz in continuous mode.",
+        "[bmm350-rs](https://github.com/Lmx154/bmm350-rs): the BMM350 magnetometer over I2C, with 0 missed data-ready edges at 100 and 400 Hz.",
+        "[lc76g-rs](https://github.com/Lmx154/lc76g-rs): the LC76G GNSS module over UART, at 10 fixes a second with 0 checksum errors.",
+        "[pio-sdmmc-rs](https://github.com/Lmx154/pio-sdmmc-rs): 4-bit microSD over PIO and DMA, writing at 7.53 MB/s and reading at 9.11 MB/s.",
+        "[qmi-psram-rs](https://github.com/Lmx154/qmi-psram-rs): the 16 MiB PSRAM through the RP2350's QMI, fully verified at 75 MHz, with 21.0 MiB/s uncached writes and 23.7 MiB/s uncached reads.",
+        "[ws2812c-rs](https://github.com/Lmx154/ws2812c-rs): the status LED over PIO or SPI, with bit timings inside the datasheet limits.",
+        "[usb-cdc](https://github.com/Lmx154/usb-cdc): a USB serial byte pipe that echoed 1 MiB with 0 errors and sends 757 kB/s to the computer.",
+        "[mavlink-device](https://github.com/Lmx154/mavlink-device) and [marv-dialect](https://github.com/Lmx154/marv-dialect): the MAVLink 2 layer the ground station talks to.",
+        "`adc-battery`: battery voltage and current from the ADC, using integer math only."
+      ]
+    },
+    {
+      "id": "blk_bu_crates_p4",
+      "type": "paragraph",
+      "text": "The [flight firmware](https://github.com/Lmx154/MARV-FC) pulls in the drivers as git dependencies pinned to exact revisions. Right now it's a skeleton that boots, links the eight device drivers and reports that it's alive. The flight logic comes next."
+    },
+    {
+      "id": "blk_bu_h_power",
+      "type": "heading",
+      "level": 2,
+      "text": "Battery and ESC"
+    },
+    {
+      "id": "blk_bu_power_p1",
+      "type": "paragraph",
+      "text": "Once the onboard hardware checked out, I moved on to power and the ESC. On a quadcopter, MARV takes raw battery voltage from the ESC pad row and feeds it to the plug-on 5 V converter on J17. For this test, a LiPo powers a Flywoo GOKU G55M 4-in-1 ESC, and the board runs from the battery through it. Pulling the USB cable doesn't interrupt it."
+    },
+    {
+      "id": "blk_bu_power_p2",
+      "type": "paragraph",
+      "text": "The board measured the battery at 15.125 V against 15.24 V on my multimeter, 0.75 percent low before any calibration. The `adc-battery` driver ran for 10 seconds at 1 kHz with all 10,000 updates on time. The ESC's current-sense output is connected and reads about 15 mV with no motors attached. Calibrating it needs a real load, so that waits for motors."
+    },
+    {
+      "id": "blk_bu_power_p3",
+      "type": "paragraph",
+      "text": "The ESC driver is next, split into its own crates like everything else. It will send DShot to all four motor outputs from a single PIO state machine, read ESC telemetry back, and pass the AM32 configurator through to the ESCs over USB. No motors are attached yet, so nothing has spun. The first probe sends only stop frames and measures how the ESC replies."
+    },
+    {
+      "id": "blk_bu_img_bench",
+      "type": "image",
+      "src": "assets/batt-pow-test-full-suite.webp",
+      "alt": "Bench setup with a LiPo battery on an XT60 connector powering a 4-in-1 ESC, MARV V2 wired to the ESC, an LC76G GPS and a BMM350 magnetometer breakout on its ports, and a Raspberry Pi Pico 2 debug probe",
+      "caption": "The full bench: a LiPo and the 4-in-1 ESC powering MARV V2, with the GPS, the BMM350 magnetometer and the Pico 2 debug probe attached"
+    },
+    {
+      "id": "blk_bu_h_gcs",
+      "type": "heading",
+      "level": 2,
+      "text": "A first ground station"
+    },
+    {
+      "id": "blk_bu_gcs_p1",
+      "type": "paragraph",
+      "text": "To talk to the board, I drafted an MVP of a [ground control station](https://github.com/Lmx154/MARV-GCS) in Rust, with an egui interface. It speaks MAVLink 2 over the board's USB serial link, or over TCP to a simulated vehicle. It has live sensor plots, a message view, a parameter editor that can write, save and load parameters, flight-log recording and replay, and a link status page."
+    },
+    {
+      "id": "blk_bu_gcs_p2",
+      "type": "paragraph",
+      "text": "On the board, it connected 20 ms after opening the port and received 4,343 frames in 20 seconds with 0 checksum errors and 0 lost frames. The IMU stream arrived at 50 Hz, pressure at 10 Hz, GPS at 5 Hz and the heartbeat at 1 Hz. It listed 13 parameters in 20 ms, a parameter write was confirmed, a write to a read-only parameter was refused, and an out-of-range value was clamped. For this test the board ran a demo firmware that generates its own values, so the next step is wiring the real sensor drivers into the link. The ground station also has 388 host tests, including end-to-end runs against the simulated vehicle with 20 percent of frames dropped."
+    },
+    {
+      "id": "blk_bu_h_rev2",
+      "type": "heading",
+      "level": 2,
+      "text": "Changes for Rev 2"
+    },
+    {
+      "id": "blk_bu_h_clk",
+      "type": "heading",
+      "level": 3,
+      "text": "Dropping the ICM-45686's external clock"
+    },
+    {
+      "id": "blk_bu_clk_p1",
+      "type": "paragraph",
+      "text": "One change I made in the Rev 1 schematic was a 32 kHz oscillator on the ICM-45686's CLKIN pin. The IMU's internal oscillator runs about 0.45 percent fast. With the external reference, the output rate came out exact in a quick trial from 100 Hz to 3.2 kHz, including 200.000 Hz at the 200 Hz setting, though at 6.4 kHz it was still about 0.18 percent off."
+    },
+    {
+      "id": "blk_bu_clk_p2",
+      "type": "paragraph",
+      "text": "After thorough testing, it turned out to be a case of diminishing returns. I captured 50 seconds of raw data at 6.4 kHz with each clock. With the filter settings matched, noise in the 100 to 400 Hz band was the same either way, about 52 to 56 µg/√Hz on the accelerometer and 3.3 mdps/√Hz on the gyro, and the Allan deviation was similar. Below 40 Hz, the external clock was actually noisier in this capture. Rate error, on the other hand, is something the firmware can measure and correct, because every sample is already time-stamped by its data-ready edge."
+    },
+    {
+      "id": "blk_bu_clk_p3",
+      "type": "paragraph",
+      "text": "So Rev 2 removes the oscillator and connects CLKIN to a spare GPIO instead. If an external clock ever proves worth it, the MCU can generate one without a dedicated part on the board."
+    },
+    {
+      "id": "blk_bu_h_psram",
+      "type": "heading",
+      "level": 3,
+      "text": "PSRAM from the start"
+    },
+    {
+      "id": "blk_bu_psram_p",
+      "type": "paragraph",
+      "text": "In Rev 1 the PSRAM was an add-on: an empty footprint I populated by hand. It passed every test and the firmware will use it, so Rev 2 has it placed during PCBA from the start."
+    },
+    {
+      "id": "blk_bu_h_next",
+      "type": "heading",
+      "level": 2,
+      "text": "What's next: two cores, two jobs"
+    },
+    {
+      "id": "blk_bu_next_p1",
+      "type": "paragraph",
+      "text": "The plan now is to write drivers for everything outside the firmware core: ESC comms, the radio, sensors, USB and logging. The core then stays small, and its job is connecting those pieces to the flight logic."
+    },
+    {
+      "id": "blk_bu_next_p2",
+      "type": "paragraph",
+      "text": "The RP2354B has two cores, and I'm giving them different jobs:"
+    },
+    {
+      "id": "blk_bu_next_list",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Core 0** runs the processes that must never be disturbed, starting with the guidance, navigation and control (GNC) loop.",
+        "**Core 1** runs everything that transmits or receives, and anything that sometimes has to be stopped: the radio, USB, logging and ESC comms."
+      ]
+    },
+    {
+      "id": "blk_bu_next_p3",
+      "type": "paragraph",
+      "text": "The stress results back this split. One core reading both IMUs at full rate is already most of the way to its limit, and in testing, an IMU serviced from an interrupt executor or from the second core never missed a sample. Keeping the GNC loop on a core that never waits on a radio packet or an SD card write is the most direct way to keep its timing deterministic."
+    },
+    {
+      "id": "blk_bu_outro",
+      "type": "paragraph",
+      "text": "The schematic and board are in the [MARV-V2-PCB repository](https://github.com/Lmx154/MARV-V2-PCB), the firmware is in [MARV-FC](https://github.com/Lmx154/MARV-FC), the ground station is in [MARV-GCS](https://github.com/Lmx154/MARV-GCS), and each driver has its own repository, linked above. Thanks for reading!"
+    }
+  ]
+}

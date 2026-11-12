@@ -19,7 +19,7 @@
       "id": "blk_upd2611",
       "type": "callout",
       "variant": "success",
-      "text": "**Update, November 2026:** MARV V2 is final. Rev 1 is ordered and in production at JLCPCB. The final board and the manufacturing details are at the end of this post."
+      "text": "**Update, November 2026:** Rev 1 has arrived and is fully brought up. Assembly, testing and the Rust drivers are in the [bring-up post](/blog/marv-v2-bring-up). The final board and the manufacturing details are at the end of this post."
     },
     {
       "id": "blk_s13gzck",
@@ -185,7 +185,7 @@
     {
       "id": "blk_mfg_p3",
       "type": "paragraph",
-      "text": "Next is bring-up: power rails first, then each sensor bus in turn, then the firmware V2 was designed around, where every sensor sample arrives on a data-ready interrupt. The schematic, board, power simulations and design checks are open source in the [MARV-V2-PCB repository](https://github.com/Lmx154/MARV-V2-PCB). Thanks for reading, and I hope you found it useful!"
+      "text": "Next is bring-up: power rails first, then each sensor bus in turn, then the firmware V2 was designed around, where every sensor sample arrives on a data-ready interrupt. That bring-up is now done; read about it in the [follow-up post](/blog/marv-v2-bring-up). The schematic, board, power simulations and design checks are open source in the [MARV-V2-PCB repository](https://github.com/Lmx154/MARV-V2-PCB). Thanks for reading, and I hope you found it useful!"
     }
   ]
 }

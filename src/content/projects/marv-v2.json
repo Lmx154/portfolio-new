@@ -2,7 +2,7 @@
   "type": "project",
   "id": "marv-v2",
   "title": "MARV V2",
-  "status": "In Manufacturing",
+  "status": "In Progress",
   "order": 6,
   "image": "",
   "model3d": "",
@@ -25,7 +25,7 @@
       "caption": "Rev 1, back: sensor bus table, ESC pad row and SWD header"
     }
   ],
-  "description": "The second revision of the MARV flight computer, now final and in production at JLCPCB. An RP2354B flight controller for rockets and drones with an ICM-45686 IMU, an LSM6DSK320X ±320 g high-g IMU and a BMP581 barometer, each on its own bus with data-ready interrupts, plus four-bit microSD logging over PIO, USB-C, a separate sensor LDO and a plug-on 5 V converter. Every change traces back to a problem V1 showed in flight. Drag to explore the board in 3D.",
+  "description": "The second revision of the MARV flight computer. Rev 1 is built and fully brought up, and Rev 2 is underway. An RP2354B flight controller for rockets and drones with an ICM-45686 IMU, an LSM6DSK320X ±320 g high-g IMU and a BMP581 barometer, each on its own bus with data-ready interrupts, plus four-bit microSD logging over PIO, USB-C, a separate sensor LDO and a plug-on 5 V converter. Every change traces back to a problem V1 showed in flight. Drag to explore the board in 3D.",
   "tags": [
     "KiCad",
     "PCB",

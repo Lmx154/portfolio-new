@@ -87,3 +87,16 @@ Verified live: `/` → `<div id="root"></div>` only; `/robots.txt` 404; Cloudfla
 > right now the MARV V2 PCB 3d rotation on the project tile is too dark it needs some light like the MARV tile. Also it's lagging like crazy please help with optimization
 
 - DONE: cause was the asset, not the viewer. The KiCad GLB had 16,741 primitives (draw calls; MARV has 32) and left metallicFactor unset (glTF default = 1.0 → near-black under the 0.18 env). `scripts/convert-model.mjs`: flatten + join (all models), and for KiCad exports (asset.extras.generator "KiCad…") metallic 0.05 / roughness 0.5 (MARV's values) + silkscreen opaque. MARV-V2-PCB.glb regenerated: 28 primitives, 7.9 MB. Measured on the built site (RTX 4070): old 14.4 fps / worst frame 100 ms → new 59.9 fps / 21 ms. Viewer lighting untouched (MARV unchanged). STEP conversion still works; 113 tests green.
+
+## Redirect (verbatim, 2026-11-12)
+> MARV-V2 PCB is in. The post images are in the downloads folder inside the marv v2 post folder. Make a blog with this stuff.
+> [owner's account: JLCPCB unboxing and damage check; soldered headers then the SparkFun IS66WVS16M8FBLL PSRAM after triple-checking datasheet vs footprint; Claude did bring-up of onboard sensors, PSRAM, USB, crystals/oscillators, SD, and external LC76G GPS, BMM350 mag, RGB LED; Rust drivers, stress tests, one crate + repo per device kept separate from the firmware; ICM45686 CLKIN oscillator was diminishing returns → removed for rev 2, CLKIN to a spare GPIO; rev 2 populates PSRAM at PCBA; then ESC + battery; GCS MVP talked to the hardware; plan: drivers for everything outside the firmware core (ESC comms, radio, sensors, USB, logging), core 0 for undisturbed work like the GNC loop, core 1 for TX/RX and anything that must sometimes stop.]
+> this is the firmware. you may look at it and the other stuff too to make a more accurate blog /home/luis/Projects/Rust/MARV-V2
+
+- DONE: new post `marv-v2-bring-up` (6 owner photos → webp in its assets/). Facts from ~/Projects/Rust/MARV-V2 (bring-up + stress logs, ICM CLKIN eval), ~/Documents/MARV-V2-drivers (12 crates, 11 public repos), ~/Documents/MARV-V2-firmware (MARV-FC), ~/Documents/MARV-GCS. Framed honestly: combined stress run not yet passing (motivates core split), no motors spun yet, GCS tested against a demo firmware. Independent fact-check: 62 claims, 3 corrected. Build/prerender (10 pages) + 113 tests green; browser check: 6 images load, 0 console errors. Nothing committed.
+
+## Redirect (verbatim, 2026-11-12)
+> update it to finished or in rev 2.
+> yes link it to this newer post
+
+- DONE: `marv-v2.json` status "In Manufacturing" → "In Progress" (existing yellow mapping; a "Rev 2" label would fall to gray without a code change), description's "now final and in production" → "Rev 1 is built and fully brought up, and Rev 2 is underway". marv-v2 post: top update callout + closing "Next is bring-up" now link `/blog/marv-v2-bring-up`. Build/prerender + 113 tests green. Nothing committed.
