@@ -1,0 +1,158 @@
+{
+  "type": "blog",
+  "id": "two-wheeler-lidar-redesign",
+  "title": "Two-Wheeler Redesign: A Lidar on Top",
+  "status": "published",
+  "date": "2026-11-12",
+  "displayDate": "November 12, 2026",
+  "excerpt": "The self-balancing robot trades its servo-swept ToF sensor for a 360° lidar on its highest point and two fixed, tilt-adjustable ToF sensors for the collision guard. Here is how the CAD changed, and how the new model holds up in simulation.",
+  "readTime": "5 min read",
+  "tags": [
+    "Robotics",
+    "Autonomy",
+    "SLAM",
+    "Lidar",
+    "CAD",
+    "3D Printing"
+  ],
+  "coverImage": "assets/cad-lidar-robot-front.webp",
+  "blocks": [
+    {
+      "id": "blk_lr_intro",
+      "type": "paragraph",
+      "text": "In the [first post](/blog/two-wheeler-autonomy-platform) on my self-balancing two-wheeler, the robot sensed its surroundings with one time-of-flight (ToF) sensor swept side to side by a servo. In the [progress update](/blog/two-wheeler-progress-update), that sensor carried the robot through maze navigation in simulation. Mapping needs a full view of the room, though, and a single beam on a servo only sees one slice at a time. So the robot now has a 360° lidar, and fitting it changed a lot of the CAD."
+    },
+    {
+      "id": "blk_lr_img_front",
+      "type": "image",
+      "src": "assets/cad-lidar-robot-front.webp",
+      "alt": "CAD render of the two-wheeled robot with a lidar on top of the battery box, the Pi 5 stack and camera in the middle, and control and power boards on the side wings",
+      "caption": "The redesigned robot in CAD, with the lidar on its highest point"
+    },
+    {
+      "id": "blk_lr_h_why",
+      "type": "heading",
+      "level": 2,
+      "text": "Why the lidar goes on top"
+    },
+    {
+      "id": "blk_lr_why_p1",
+      "type": "paragraph",
+      "text": "A lidar is only as useful as what it can see. Anywhere lower on the robot, the decks, standoffs and boards would block part of every sweep, so I put it on the highest part of the robot: the closed face of the battery box. Nothing on the robot rises above the box, so the beam has a clear view all the way around. Its spin axis sits directly over the wheel axle, centered left to right and front to back."
+    },
+    {
+      "id": "blk_lr_why_p2",
+      "type": "paragraph",
+      "text": "Mass up high is a real cost on a robot that balances and has to stand itself back up after a fall. My first pick was an RPLIDAR C1, but in simulation the robot couldn't stand back up from face down with that much mass up high. So I switched to the lighter WayPonDEV FHL-LD19 Plus, which is listed at 50 to 55 g. Combined with the robot's real weighed mass, which came in well under my earlier estimate, the simulated robot balanced, recovered from a push and passed its self-righting tests on a full battery."
+    },
+    {
+      "id": "blk_lr_why_p3",
+      "type": "paragraph",
+      "text": "The lidar mounts on a 3 mm printed plate. The plate bolts to the battery box with four M2.5 screws into heat-set inserts, and all four screws sit outside the lidar's footprint, so the plate comes off with the lidar still attached."
+    },
+    {
+      "id": "blk_lr_img_mount",
+      "type": "image",
+      "src": "assets/cad-lidar-mount.webp",
+      "alt": "CAD render of a thin rectangular printed plate with an open center, four outer holes for the battery box and three inner holes for the lidar",
+      "caption": "LIDAR-MOUNT: the four outer holes take M2.5 screws into the battery box's inserts, and the three inner holes hold the lidar"
+    },
+    {
+      "id": "blk_lr_h_tof",
+      "type": "heading",
+      "level": 2,
+      "text": "Two fixed ToF sensors instead of a servo"
+    },
+    {
+      "id": "blk_lr_tof_p1",
+      "type": "paragraph",
+      "text": "With the lidar handling mapping, the servo and its ToF arm came off. In their place are two fixed TOF400C (VL53L1X) sensors, one facing forward and one facing back, for the Pico 2's collision guard. They look down at the floor at an angle. The plan is for the guard to compare each reading to where the floor should be: a shorter reading means an obstacle, and a longer one means a drop-off."
+    },
+    {
+      "id": "blk_lr_tof_p2",
+      "type": "paragraph",
+      "text": "The right angle is something I want to find on the real floor, so the mount is adjustable. A printed yoke sits on the deck, and a carrier holding the sensor board pivots in it about an axis through the sensor's face, so tilting it doesn't move the sensor. A locking screw in a curved slot sets the tilt anywhere from 0 to 30°, with 15° as the default. Tick marks on both sides of the hinge and an arrow printed on each arm of the carrier make an angle easy to set and repeat. The board sits on 3 mm standoffs with an open center, because the downloaded model of the sensor had a bare back and the real board has parts on it."
+    },
+    {
+      "id": "blk_lr_img_tof",
+      "type": "image",
+      "src": "assets/cad-tof-mount.webp",
+      "alt": "CAD renders of the two ToF mount parts: a yoke with curved slots and tick marks on its arms, and a carrier with hinge arms, standoffs and pointer arrows",
+      "caption": "The adjustable ToF mount: the yoke (left) with its curved locking slots and tick marks, and the carrier (right) with its standoffs and pointer arrows"
+    },
+    {
+      "id": "blk_lr_tof_p3",
+      "type": "paragraph",
+      "text": "I also moved both sensors down, from 115.5 mm to 101 mm above the floor, because they sat too high. Even with a second sensor and the adjustable mounts, taking out the servo saves a few grams by my estimate."
+    },
+    {
+      "id": "blk_lr_h_other",
+      "type": "heading",
+      "level": 2,
+      "text": "Other changes along the way"
+    },
+    {
+      "id": "blk_lr_other_list",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Camera 8 mm lower:** more room for the ribbon cable, and a field of view that reaches closer to the ground in front of the robot.",
+        "**Deeper deck notches:** when assembling, I always had to take a board wing off to get nuts and screws past the decks. The notches now go 5.5 mm deeper on the servo deck and 12.5 mm deeper on the camera deck.",
+        "**Cell brackets:** printed brackets grip the three 18650 cells in the battery box. The first print fit perfectly.",
+        "**A balance slit:** a small slot in the battery box for the balance lead used when charging.",
+        "**Shorter ear posts on the battery box,** so the M3 × 16 screws I have can reach through them."
+      ]
+    },
+    {
+      "id": "blk_lr_img_side",
+      "type": "image",
+      "src": "assets/cad-lidar-robot-side.webp",
+      "alt": "Side view CAD render of the robot showing the lidar above the battery box, the decks and the front and rear bumpers",
+      "caption": "Side view: the lidar sits on the battery box over the axle, and the front and rear ToF mounts tilt toward the floor"
+    },
+    {
+      "id": "blk_lr_h_sim",
+      "type": "heading",
+      "level": 2,
+      "text": "Checking it in simulation"
+    },
+    {
+      "id": "blk_lr_sim_p1",
+      "type": "paragraph",
+      "text": "The Gazebo model is built from the CAD, so it was rebuilt too. It now has the lidar, the front and rear ToF sensors at 15°, the camera in its new spot and the battery cells as real bodies. The simulated lidar returns 2,160 rays per scan, and none of them come back closer than 15 cm, so no part of the robot gets in the way of its own sweep."
+    },
+    {
+      "id": "blk_lr_sim_p2",
+      "type": "paragraph",
+      "text": "Falls still land on the bumpers first, at 44.5°. Resting on its front bumper, the lidar stays 29.4 mm off the floor, and resting on its rear bumper it stays 17.9 mm off, so it never takes the impact. On a full battery (10.8 V), the robot stood up from face down in one attempt, taking 3.7 s, and from its back bumper on both a full and a low battery. It can't recover from lying face up, and it gives up safely after three attempts. One case is still open: from face down on a low battery (9.6 V), it gets up but overshoots to 39.4°, past my 30° limit."
+    },
+    {
+      "id": "blk_lr_img_iso",
+      "type": "image",
+      "src": "assets/cad-lidar-robot-iso.webp",
+      "alt": "Screenshot of the robot in the SolidCraft CAD app: lidar on top, Pi 5 stack with the camera, the tilted ToF mount on the deck, and boards on the wings",
+      "caption": "Working on the redesign in the CAD app"
+    },
+    {
+      "id": "blk_lr_h_next",
+      "type": "heading",
+      "level": 2,
+      "text": "What's next"
+    },
+    {
+      "id": "blk_lr_next_list",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Printing:** the new parts are modeled, and the cell brackets are already printed. The lidar plate waits on confirming the LD19 Plus's hole pattern, since the drawing I have is for the plain LD19, and the ToF carrier waits on a check that the sensor board's back components clear it.",
+        "**A balancing BMS:** the current battery management board doesn't balance the cells when charging, so the next revision switches to an HW-287 balancing BMS. The battery box gets 5.4 mm taller, and the lidar rises with it.",
+        "**Lidar SLAM:** mapping with the lidar in simulation is a work in progress, along with the floor-relative guard for the tilted ToF sensors."
+      ]
+    },
+    {
+      "id": "blk_lr_outro",
+      "type": "paragraph",
+      "text": "The 3D model on the [project tile](/#projects) is updated to this version, so you can spin the new robot around there. Thanks for reading!"
+    }
+  ]
+}

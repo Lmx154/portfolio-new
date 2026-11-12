@@ -100,3 +100,9 @@ Verified live: `/` → `<div id="root"></div>` only; `/robots.txt` 404; Cloudfla
 > yes link it to this newer post
 
 - DONE: `marv-v2.json` status "In Manufacturing" → "In Progress" (existing yellow mapping; a "Rev 2" label would fall to gray without a code change), description's "now final and in production" → "Rev 1 is built and fully brought up, and Rev 2 is underway". marv-v2 post: top update callout + closing "Next is bring-up" now link `/blog/marv-v2-bring-up`. Build/prerender + 113 tests green. Nothing committed.
+
+## Redirect (verbatim, 2026-11-12)
+> I also want to update the 3d model and make another blog for the newest modeling changes of the osepp-two wheeler. it got a lidar update so it changed a lot.
+> check if there is any existing mention of it, and if i did then just append some newer images [Image #2] and update the model in the project tile
+
+- DONE: no existing post covered the lidar redesign (only "instead of a lidar" in the first post) → new post `two-wheeler-lidar-redesign` (CAD M14–M20 + sim results; owner screenshot + fresh solidcraft-cli snapshots, cropped, of the assembly and LIDAR-MOUNT / TOF-MOUNT+TOF-CARRIER). Tile model: assembly/2wbal-01.json (Nov 5, M19/M20 state) → `file.export` OBJ (4.87M tris) → scratchpad obj2glb.mjs (stream parse, group by MTL colour, sRGB→linear, Z-up mm → Y-up m, dedup/weld/join/simplify ratio 0.07 err 0.001/meshopt, scene extras upright) → `public/two-wheeler-lidar.glb` (382k tris, 2.9 MB; new name to dodge caches; old two-wheeler.glb removed). OBJ export carries body colours only, so face-coloured boards are grey. Tile caption/description updated (servo ToF → lidar + fixed ToFs). M22 (HW-287 BMS, +5.4 mm) not in the assembly yet → framed as next. Fact-check 38 claims, 7 corrected. Build 11 pages + 113 tests green; browser: 5 images load, 0 errors; tile model renders upright. Not committed.

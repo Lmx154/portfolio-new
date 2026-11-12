@@ -9,8 +9,8 @@
   "media": [
     {
       "type": "model",
-      "src": "/two-wheeler.glb",
-      "caption": "The full robot from the CAD assembly: frame, motors, electronics, Pi 5 stack, camera, ToF arm and battery"
+      "src": "/two-wheeler-lidar.glb",
+      "caption": "The full robot from the CAD assembly: frame, motors, electronics, Pi 5 stack, camera, front and rear ToF sensors, battery and the lidar on top"
     },
     {
       "type": "image",
@@ -36,7 +36,7 @@
       "caption": "Test prints and electronics: the battery box, the heat-set insert coupon and both perfboards"
     }
   ],
-  "description": "A self-balancing two-wheeled robot built as an autonomy testbed. The real-time layer, a Rust LQR balance controller and a collision guard, is written for a Pico 2. A Raspberry Pi 5 handles camera perception and SLAM, and a servo-swept time-of-flight sensor scans for mapping. In Gazebo simulation, the stack balances, drives on command, avoids obstacles, solves mazes, stands back up after a fall and builds a map, and each layer is scored against ground truth. Next: real SLAM, and printing the robot. Drag to explore the full CAD model in 3D.",
+  "description": "A self-balancing two-wheeled robot built as an autonomy testbed. The real-time layer, a Rust LQR balance controller and a collision guard, is written for a Pico 2. A Raspberry Pi 5 handles camera perception and SLAM, with a 360° lidar on top for mapping and fixed front and rear time-of-flight sensors for the collision guard. In Gazebo simulation, the stack balances, drives on command, avoids obstacles, solves mazes, stands back up after a fall and builds a map, and each layer is scored against ground truth. Next: real SLAM, and printing the robot. Drag to explore the full CAD model in 3D.",
   "tags": [
     "Robotics",
     "Autonomy",
