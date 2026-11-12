@@ -1,0 +1,259 @@
+{
+  "type": "blog",
+  "id": "drone-cad-and-sim",
+  "title": "From Flatbed Scans to Gazebo: Modeling My 7-Inch Drone with Claude Code",
+  "status": "published",
+  "date": "2026-11-12",
+  "displayDate": "November 12, 2026",
+  "excerpt": "Nothing on my 7-inch quad was documented well enough to design mounts against. So I scanned, measured and weighed its parts, and Claude Code turned the scans into a parametric CAD assembly with computer vision tools it wrote and SolidCraft, then generated a Gazebo model to tune MARV V2's flight control with.",
+  "readTime": "8 min read",
+  "tags": [
+    "Drones",
+    "CAD",
+    "Computer Vision",
+    "Claude Code",
+    "Gazebo",
+    "Simulation",
+    "3D Printing"
+  ],
+  "coverImage": "assets/cad-drone-assembly.webp",
+  "blocks": [
+    {
+      "id": "blk_dc_intro1",
+      "type": "paragraph",
+      "text": "My 7-inch quadcopter is about to carry a lot more. Along with the [MARV V2](/blog/marv-v2-bring-up) flight controller, I want to mount a lidar, a time-of-flight (ToF) sensor, a Raspberry Pi 5, a GPS and a magnetometer on it. Designing mounts for all of that needs a CAD model that matches the real drone, and nothing on mine was documented well enough to design against. (I covered the original build in an [earlier post](/blog/getting-a-better-understanding-of-flight-controllers-with-my-first-drone); the drone has since moved to a new frame.)"
+    },
+    {
+      "id": "blk_dc_intro2",
+      "type": "paragraph",
+      "text": "A good model does a second job too. If every part has the right mass in the right place, the CAD can feed a physics simulation, and the simulation becomes a place to tune flight control before the drone flies."
+    },
+    {
+      "id": "blk_dc_intro3",
+      "type": "paragraph",
+      "text": "The work split cleanly. I did the hands-on part: taking the drone apart, scanning, measuring, weighing, printing and fitting. Claude Code did the software. It wrote computer vision tools that measure each scan in millimeters, built every part as a parametric design in SolidCraft through its MCP server and command-line tools, generated the assembly, and turned all of it into a Gazebo model. Here's the whole pipeline:"
+    },
+    {
+      "id": "blk_dc_img_pipeline",
+      "type": "image",
+      "src": "assets/scan-to-sim-pipeline.svg",
+      "alt": "Flowchart from scan to simulation. My flatbed scans and caliper readings feed Claude Code's computer vision tracing, then parametric SolidCraft parts that are checked against the scans, then a scripted assembly that takes my printed spacer, then mass properties from my weighings, then the Gazebo model and its checks, and next, tuning the flight controller.",
+      "caption": "The pipeline from scan to simulation: my steps in amber, Claude Code's in cyan"
+    },
+    {
+      "id": "blk_dc_img_assembly",
+      "type": "image",
+      "src": "assets/cad-drone-assembly.webp",
+      "alt": "CAD render of the 7-inch quadcopter with carbon plates, four motors and props, a blue battery with a gray GPS box on top, and a green flight controller board inside the frame stack",
+      "caption": "Where it ends up: the full drone in CAD, with the scanned frame, motors and props, the 4S pack with the GPS on top, and MARV V2 inside the stack"
+    },
+    {
+      "id": "blk_dc_h_scan",
+      "type": "heading",
+      "level": 2,
+      "text": "Scanning the frame"
+    },
+    {
+      "id": "blk_dc_scan_p1",
+      "type": "paragraph",
+      "text": "The frame is an HGLRC MY7, a stack of carbon fiber plates: a 3 mm arm locking plate on the bottom, four 6 mm arms, a 3 mm middle plate, 28 mm aluminum standoffs and a 2 mm top plate, with two small camera side plates at the front. Claude Code's first pass traced the parts from photos, and it came out too irregular to trust. A photo has perspective and shadows, and its scale has to be guessed from something else in the shot."
+    },
+    {
+      "id": "blk_dc_scan_p2",
+      "type": "paragraph",
+      "text": "So I took the drone apart and put the parts on a flatbed scanner. A scan has no perspective, and at 300 dpi every pixel is a known 0.0847 mm. I scanned the five unique parts: the middle plate, the top plate, the locking plate, an arm and a camera plate."
+    },
+    {
+      "id": "blk_dc_img_scan",
+      "type": "image",
+      "src": "assets/scan-top-plate.webp",
+      "alt": "Carbon fiber drone top plate lying on the glass of a Brother flatbed scanner",
+      "caption": "The top plate on the flatbed scanner"
+    },
+    {
+      "id": "blk_dc_scale_p1",
+      "type": "paragraph",
+      "text": "A scanner's scale is close but not guaranteed, so I also measured the parts with calipers: the middle plate's 213 mm length and 51 mm width, the top plate's 205.60 mm length, the locking plate's 51.27 mm waist, and the arm's 173.88 mm length and 23.10 mm motor pad. Those readings set the scale of the four larger parts' scans."
+    },
+    {
+      "id": "blk_dc_img_calipers",
+      "type": "image",
+      "src": "assets/measure-cam-plate.webp",
+      "alt": "Hand holding digital calipers reading 30.30 mm across a small carbon fiber camera plate",
+      "caption": "Measuring a camera plate with calipers"
+    },
+    {
+      "id": "blk_dc_h_cv",
+      "type": "heading",
+      "level": 2,
+      "text": "From scan to measurements: Claude Code's computer vision tools"
+    },
+    {
+      "id": "blk_dc_cv_p1",
+      "type": "paragraph",
+      "text": "A scan is only a picture until something measures it. Claude Code wrote a set of Python tools, using OpenCV, NumPy and SciPy, that turn each scan into an outline, holes and cut-outs in millimeters:"
+    },
+    {
+      "id": "blk_dc_cv_list",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Outlines** follow the sharp edge where the carbon was cut. The glass casts a soft shadow beside each plate, and tracing at a middle gray level lands in that shadow and makes the part up to 0.8 mm too big. So the tools trace the sharp dark-to-light step at the cut edge instead, which gives a symmetric outline: on the middle plate's straight tail, the two sides agree within 0.03 mm.",
+        "**Holes, nuts and cut-outs** stand out because carbon fiber sits in a narrow band of gray. Anything brighter or darker inside the plate is a feature, and the shiny ones are nuts. Each hole's circle is fitted where the brightness changes fastest around its rim.",
+        "**Each part gets its own frame,** centered on a hole pattern and rotated so the pattern lines up with the axes. The middle plate was scanned face down, so its image is mirrored first.",
+        "**Scale and symmetry:** the pixel scale stays fixed by the 300 dpi, and only the outline is scaled to the caliper readings, and only when the correction is under half a percent. Holes are never scaled. If one edge is shadowed, as one edge of the middle plate was, the outline is rebuilt from the clean half, mirrored."
+      ]
+    },
+    {
+      "id": "blk_dc_cv_p2",
+      "type": "paragraph",
+      "text": "The numbers say the method works. Every caliper correction came out within half a percent, between 0.996 and 1.005, so the scanner was already close. Hole patterns with a known spacing, like the 30.5 mm flight stack mount, matched within 0.07 to 0.17 mm."
+    },
+    {
+      "id": "blk_dc_h_cad",
+      "type": "heading",
+      "level": 2,
+      "text": "From measurements to CAD: SolidCraft"
+    },
+    {
+      "id": "blk_dc_cad_p1",
+      "type": "paragraph",
+      "text": "Claude Code then turned each trace into a parametric part in SolidCraft, the CAD app I use, working through its MCP server and command-line tools. The outline is a fixed polygon, but every hole is a cut whose position and diameter are parameters, and symmetric pairs share theirs, so a pair stays exactly symmetric. Each build also writes a STEP file, a test-print file with hole compensation, and a check image that lays the built part back over its scan."
+    },
+    {
+      "id": "blk_dc_img_trace",
+      "type": "image",
+      "src": "assets/scan-trace-top-plate.webp",
+      "alt": "Scan of the carbon fiber top plate with a thin blue traced outline and green circles and squares marking the modeled holes and slots",
+      "caption": "The check image for the top plate: the traced outline (blue) and the built holes and slots (green), laid over the scan"
+    },
+    {
+      "id": "blk_dc_cad_p2",
+      "type": "paragraph",
+      "text": "The assembly is generated the same way. A script reads the hole positions out of each part design and places everything from them: the plates, arms, standoffs and screws, then the motors, props, ESC, MARV V2, receiver, GPS and battery. When a part changes, rerunning the script places everything again, and it checks the result: hole positions in the assembly, the wheelbase and the camera plate tabs."
+    },
+    {
+      "id": "blk_dc_h_weigh",
+      "type": "heading",
+      "level": 2,
+      "text": "Weighing the parts"
+    },
+    {
+      "id": "blk_dc_weigh_p1",
+      "type": "paragraph",
+      "text": "With the geometry done, I weighed the parts one by one. For the simulation, mass matters as much as shape: how a drone handles depends on how much it weighs and where that weight sits."
+    },
+    {
+      "id": "blk_dc_weigh_list",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Frame:** middle plate 48 g, top plate 34 g, locking plate 20 g, four arms at 24 g each, and 16 g of screws and standoffs.",
+        "**Motors:** Emax ECO II 2807 1700KV, 56 g each with leads and prop nut.",
+        "**Props:** HQProp 7×3.5×3, 12 g each.",
+        "**Electronics:** 22 g for the GOKU G55M ESC, flight controller and compass together, 16 g for the GPS and 8 g for the RadioMaster RP4TD-M receiver.",
+        "**Battery:** a 4S 1600 mAh pack at 170 g."
+      ]
+    },
+    {
+      "id": "blk_dc_img_weigh",
+      "type": "image",
+      "src": "assets/weigh-batt.webp",
+      "alt": "4S LiPo battery with an XT60 lead on a digital scale reading 170 g",
+      "caption": "The 4S pack on the scale: 170 g"
+    },
+    {
+      "id": "blk_dc_weigh_p2",
+      "type": "paragraph",
+      "text": "What I couldn't weigh on its own is estimated, and labeled as an estimate in the model: 20 g of wiring, the battery pad and strap, and the printed spacer below. Altogether the model comes to 748.7 g, and more than 90% of that comes straight from the scale. Putting the whole drone on the scale is still on my list, and it will check that total. There's no CAD for the Emax motors, so the assembly borrows a similar 2807 motor model for looks and uses the weighed 56 g for mass."
+    },
+    {
+      "id": "blk_dc_weigh_p3",
+      "type": "paragraph",
+      "text": "From there, Claude Code's tools spread most parts' weighed mass evenly through their CAD volume, treat a few small items like the wiring, GPS and receiver as point masses, and compute the whole drone's center of gravity and inertia. The center of gravity sits on the centerline, 0.5 mm ahead of the flight stack's center and 31.8 mm above the bottom of the frame. The battery's position is a simulation setting rather than fixed geometry. By default it sits where it puts the center of gravity right over the middle of the four motors, and it can be moved to see how an off-center load flies. Every millimeter the battery moves shifts the center of gravity by about 0.26 mm."
+    },
+    {
+      "id": "blk_dc_h_spacer",
+      "type": "heading",
+      "level": 2,
+      "text": "A spacer for MARV V2"
+    },
+    {
+      "id": "blk_dc_spacer_p1",
+      "type": "paragraph",
+      "text": "MARV V2 sits in the frame's stack, and it brought a fit problem: its grid of through-hole header pins stands straight up. With Dupont connectors plugged onto them, the connector housings could hit the underside of the top plate. I asked for a spacer about 4 to 5 mm thick between the standoffs and the top plate, thick only where it has to be: at the standoffs and at the camera mount, so the camera plates still fit."
+    },
+    {
+      "id": "blk_dc_spacer_p2",
+      "type": "paragraph",
+      "text": "Claude Code generated it as another parametric SolidCraft part, straight from the top plate's scanned outline. It's 5 mm thick at the eight standoff bosses and the nose, joined by a thin 1.6 mm rail, with eight 3.5 mm holes, two slots for the camera plate tabs, and an open center over the pins. The thickness is a build setting. It prints flat in PETG and weighs an estimated 7.9 g, and the eight top screws need to be a little longer to reach through it."
+    },
+    {
+      "id": "blk_dc_img_spacer",
+      "type": "image",
+      "src": "assets/cad-top-spacer.webp",
+      "alt": "CAD render of a thin printed frame shaped like the top plate's outline, with standoff holes, two small slots at one end and a large open center",
+      "caption": "The top plate spacer in CAD: 5 mm tall, with an open center over MARV V2's header pins"
+    },
+    {
+      "id": "blk_dc_img_print",
+      "type": "image",
+      "src": "assets/print-top-spacer.webp",
+      "alt": "Elegoo 3D printer printing the long, thin black spacer on its bed",
+      "caption": "Printing the spacer"
+    },
+    {
+      "id": "blk_dc_spacer_p3",
+      "type": "paragraph",
+      "text": "I printed it and fitted it to the real drone. Claude Code then added it to the assembly, moved the top plate, battery and GPS up by its thickness, and reran the masses and the simulation checks. Because the spacer raises the top plate and the battery strapped on top of it, the center of gravity rose from 30.1 to 31.8 mm above the bottom of the frame. MARV V2 itself isn't back in the frame yet, because I'm still using the board on the bench to write its drivers."
+    },
+    {
+      "id": "blk_dc_h_sim",
+      "type": "heading",
+      "level": 2,
+      "text": "The Gazebo model"
+    },
+    {
+      "id": "blk_dc_sim_p1",
+      "type": "paragraph",
+      "text": "Claude Code also generated the Gazebo model, from the same CAD and mass data, so a change to either flows through to the simulation. The model has a main body (417.5 g), the battery as its own body (192 g with the GPS and strap) so its position can move, and four rotors (34.8 g each), each driven by Gazebo's multicopter motor plugin. An IMU publishes at 250 Hz, and the motor order follows PX4's quad-X layout."
+    },
+    {
+      "id": "blk_dc_sim_p2",
+      "type": "paragraph",
+      "text": "The thrust constant, 4.47 × 10⁻⁶ N per (rad/s)², is fitted to Emax's thrust table for the ECO II 2807 1700KV with these props at 16.8 V, a fully charged 4S pack. The table's full-throttle row gives 2,060 g per motor but no RPM, so the top speed of 2,126 rad/s is where the fit reaches that thrust. The spin-up and spin-down times are estimated, and so are the rotor drag coefficients, which are borrowed from PX4's x500 model."
+    },
+    {
+      "id": "blk_dc_sim_p3",
+      "type": "paragraph",
+      "text": "A script checks the model on two Gazebo versions. It confirms each motor's position and spin direction, that the drone hovers, that lift at 110% of hover speed gives the expected upward acceleration (2.059 m/s², exactly as calculated), that yaw turns the right way, and that the simulated mass matches the CAD. Everything passes. The simulated drone hovers at 641 rad/s, about 6,100 RPM. That's roughly 30% of top motor speed and only 9% of full thrust. Four motors at 2,060 g each against 748.7 g gives a thrust-to-weight ratio of about 11."
+    },
+    {
+      "id": "blk_dc_sim_p4",
+      "type": "paragraph",
+      "text": "The checks also turned up something to tune. With all four motors at the same speed and no controller, the hover slowly tips: 0.18° at 2.5 s, past 5° by 4.6 s. With rotor drag turned off, it stays under 0.9° for 7 s, so the likely cause is the drag force the motor plugin applies at each rotor. A quad isn't stable without a controller anyway, and a flight controller corrects this kind of drift, but those borrowed drag values are the first thing I'll tune against the real drone."
+    },
+    {
+      "id": "blk_dc_h_next",
+      "type": "heading",
+      "level": 2,
+      "text": "What's next"
+    },
+    {
+      "id": "blk_dc_next_list",
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "**Drivers first:** MARV V2 goes back into the frame once its drivers are done.",
+        "**Tuning in simulation:** then I'll tune the flight controller against this model before it flies. Hover RPM from ESC telemetry will check the motor constants, and weighing the whole drone will check the 748.7 g total.",
+        "**A few measurements to settle:** whether the props are mounted props-in or props-out, and the top plate's thickness. It weighs 34 g, which at carbon fiber's density would make it about 2.8 mm thick, not the 2 mm the model uses, unless something else was on the plate when I weighed it.",
+        "**The sensor bay:** the bay for the Pi 5, lidar, ToF sensor, GPS and magnetometer, along with landing legs, is on hold until the drone is flying on MARV V2."
+      ]
+    },
+    {
+      "id": "blk_dc_outro",
+      "type": "paragraph",
+      "text": "Going from a box of carbon plates to a CAD model I can design against, and a simulation built from the same numbers, took a scanner, calipers and a scale on my end, and computer vision, parametric CAD and simulation tooling on Claude Code's. Thanks for reading!"
+    }
+  ]
+}

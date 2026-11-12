@@ -1,0 +1,43 @@
+{
+  "type": "project",
+  "id": "quadcopter",
+  "title": "7-Inch Quadcopter",
+  "status": "In Progress",
+  "order": 7,
+  "image": "",
+  "model3d": "",
+  "media": [
+    {
+      "type": "model",
+      "src": "/quadcopter.glb",
+      "caption": "The full drone from the CAD assembly: the scanned frame, motors and props, the 4S pack with the GPS on top, and MARV V2 inside the stack under the spacer and top plate"
+    },
+    {
+      "type": "image",
+      "src": "/quadcopter-scan-trace.webp",
+      "alt": "Flatbed scan of the carbon fiber top plate with a blue traced outline and green marks on the modeled holes and slots",
+      "caption": "A 300 dpi scan of the top plate, with the traced outline and modeled holes laid over it"
+    },
+    {
+      "type": "image",
+      "src": "/quadcopter-top-spacer.webp",
+      "alt": "CAD render of a thin printed frame shaped like the top plate's outline, with standoff holes and a large open center",
+      "caption": "The printed top plate spacer that makes room for MARV V2's header connectors"
+    },
+    {
+      "type": "image",
+      "src": "/quadcopter-spacer-print.webp",
+      "alt": "Elegoo 3D printer printing the long, thin black spacer on its bed",
+      "caption": "Printing the spacer"
+    }
+  ],
+  "description": "My 7-inch quadcopter, modeled so I can design sensor mounts against it and tune MARV V2's flight control in simulation. I scanned the frame's parts at 300 dpi, measured them with calipers and weighed them one by one. Claude Code measured the scans with computer vision tools it wrote, built each part as a parametric SolidCraft design through its MCP server and CLI, and generated the assembly, so the model's 748.7 g, center of gravity and inertia come from the real drone. A printed spacer makes room for MARV V2's header connectors. Claude Code also generated the Gazebo model from the same CAD and masses, with motor constants fitted to Emax's thrust data, and it passes its hover, lift, yaw and mass checks. Next: finish MARV V2's drivers and tune the flight controller in simulation. A bay for a Pi 5, lidar, ToF sensor, GPS and magnetometer comes once it flies. Drag to explore the full CAD model in 3D.",
+  "tags": [
+    "Drones",
+    "CAD",
+    "Gazebo",
+    "Simulation",
+    "3D Printing",
+    "Avionics"
+  ]
+}

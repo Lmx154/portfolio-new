@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 1142" width="560" height="1142" role="img" aria-labelledby="ttl dsc">
+  <title id="ttl">From scan to simulation</title>
+  <desc id="dsc">Pipeline: my flatbed scans and caliper readings feed Claude Code's computer vision tracing, which feeds parametric SolidCraft parts checked against the scans, then a scripted assembly that takes my printed spacer, then mass properties from my weighings, then the Gazebo model and its checks, and next, tuning the flight controller.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a8a8a"/>
+    </marker>
+    <marker id="ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#67e8f9"/>
+    </marker>
+    <style>
+      .h{font:700 19px Inter,"Segoe UI",Helvetica,Arial,sans-serif;fill:#f5f5f5}
+      .l{font:400 12.5px Inter,"Segoe UI",Helvetica,Arial,sans-serif;fill:#a3a3a3}
+      .t{font:600 15px Inter,"Segoe UI",Helvetica,Arial,sans-serif;fill:#f5f5f5}
+      .d{font:400 13px Inter,"Segoe UI",Helvetica,Arial,sans-serif;fill:#a3a3a3}
+      .s{font:500 12px "JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;fill:#67e8f9}
+      .g{font:700 10.5px "JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;letter-spacing:.06em}
+      .me{fill:#fbbf24}.cc{fill:#67e8f9}
+      .bme{fill:#111827;stroke:#fbbf24;stroke-opacity:.6;stroke-width:1.2}
+      .bcc{fill:#111827;stroke:#67e8f9;stroke-opacity:.6;stroke-width:1.2}
+      .pme{fill:#fbbf24;fill-opacity:.15}.pcc{fill:#67e8f9;fill-opacity:.15}
+      .a{stroke:#8a8a8a;stroke-width:1.5;fill:none}
+      .lp{stroke:#67e8f9;stroke-opacity:.75;stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+      .lt{font:500 11px "JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;fill:#67e8f9}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="560" height="1142" rx="14" fill="#0a0e15"/>
+
+  <text class="h" x="28" y="40">From scan to simulation</text>
+  <circle cx="33" cy="61" r="5" class="me"/>
+  <text class="l" x="45" y="65">Me: hands-on</text>
+  <circle cx="171" cy="61" r="5" class="cc"/>
+  <text class="l" x="183" y="65">Claude Code: software</text>
+
+  <!-- Row 1: scans + calipers (me) -->
+  <rect class="bme" x="24" y="88" width="248" height="104" rx="10"/>
+  <rect class="pme" x="38" y="100" width="30" height="18" rx="9"/>
+  <text class="g me" x="46" y="113">ME</text>
+  <text class="t" x="38" y="140">Flatbed scans</text>
+  <text class="d" x="38" y="160">5 parts at 300 dpi</text>
+  <text class="d" x="38" y="178">0.0847 mm per pixel</text>
+
+  <rect class="bme" x="288" y="88" width="248" height="104" rx="10"/>
+  <rect class="pme" x="302" y="100" width="30" height="18" rx="9"/>
+  <text class="g me" x="310" y="113">ME</text>
+  <text class="t" x="302" y="140">Caliper readings</text>
+  <text class="d" x="302" y="160">lengths and widths</text>
+  <text class="d" x="302" y="178">to check each scan's scale</text>
+
+  <line class="a" x1="148" y1="192" x2="148" y2="226" marker-end="url(#ar)"/>
+  <line class="a" x1="412" y1="192" x2="412" y2="226" marker-end="url(#ar)"/>
+
+  <!-- Row 2: CV tracing (Claude Code) -->
+  <rect class="bcc" x="24" y="228" width="472" height="154" rx="10"/>
+  <rect class="pcc" x="38" y="240" width="88" height="18" rx="9"/>
+  <text class="g cc" x="46" y="253">CLAUDE CODE</text>
+  <text class="t" x="38" y="280">Computer vision tracing</text>
+  <text class="s" x="38" y="300">Python, OpenCV, NumPy, SciPy</text>
+  <text class="d" x="38" y="324">• Outline at the sharp cut edge, not the glass shadow</text>
+  <text class="d" x="38" y="344">• Hole circles fit where brightness changes fastest</text>
+  <text class="d" x="38" y="364">• Frame from a hole pattern, outline scaled to calipers</text>
+
+  <line class="a" x1="260" y1="382" x2="260" y2="416" marker-end="url(#ar)"/>
+
+  <!-- Row 3: parametric parts (Claude Code) -->
+  <rect class="bcc" x="24" y="418" width="472" height="134" rx="10"/>
+  <rect class="pcc" x="38" y="430" width="88" height="18" rx="9"/>
+  <text class="g cc" x="46" y="443">CLAUDE CODE</text>
+  <text class="t" x="38" y="470">Parametric parts in SolidCraft</text>
+  <text class="s" x="38" y="490">via SolidCraft's MCP server and CLI</text>
+  <text class="d" x="38" y="514">• Fixed outline; hole x, y and diameter as parameters</text>
+  <text class="d" x="38" y="534">• Writes STEP, a test-print file and a scan overlay</text>
+
+  <!-- verify loop: parts back to the scan -->
+  <path class="lp" d="M496,478 H526 V305 H498" marker-end="url(#ac)"/>
+  <text class="lt" x="546" y="391" text-anchor="middle" transform="rotate(-90 546 391)">check vs scan</text>
+
+  <line class="a" x1="174" y1="552" x2="174" y2="586" marker-end="url(#ar)"/>
+
+  <!-- Row 4: assembly (Claude Code) + spacer (me) -->
+  <rect class="bcc" x="24" y="588" width="300" height="104" rx="10"/>
+  <rect class="pcc" x="38" y="600" width="88" height="18" rx="9"/>
+  <text class="g cc" x="46" y="613">CLAUDE CODE</text>
+  <text class="t" x="38" y="640">Assembly from hole positions</text>
+  <text class="d" x="38" y="660">Places frame, motors, props, ESC,</text>
+  <text class="d" x="38" y="678">MARV V2, receiver, GPS and battery</text>
+
+  <rect class="bme" x="352" y="588" width="184" height="104" rx="10"/>
+  <rect class="pme" x="366" y="600" width="30" height="18" rx="9"/>
+  <text class="g me" x="374" y="613">ME</text>
+  <text class="t" x="366" y="640">MARV V2 spacer</text>
+  <text class="d" x="366" y="660">printed and fitted</text>
+  <text class="d" x="366" y="678">on the real drone</text>
+
+  <line class="a" x1="352" y1="640" x2="326" y2="640" marker-end="url(#ar)"/>
+
+  <line class="a" x1="280" y1="692" x2="280" y2="728" marker-end="url(#ar)"/>
+
+  <!-- Row 5: weighing (me) + mass properties (Claude Code) -->
+  <rect class="bme" x="24" y="730" width="184" height="104" rx="10"/>
+  <rect class="pme" x="38" y="742" width="30" height="18" rx="9"/>
+  <text class="g me" x="46" y="755">ME</text>
+  <text class="t" x="38" y="782">Weigh parts</text>
+  <text class="d" x="38" y="802">one by one</text>
+  <text class="d" x="38" y="820">on a scale</text>
+
+  <rect class="bcc" x="240" y="730" width="296" height="104" rx="10"/>
+  <rect class="pcc" x="254" y="742" width="88" height="18" rx="9"/>
+  <text class="g cc" x="262" y="755">CLAUDE CODE</text>
+  <text class="t" x="254" y="782">Mass properties</text>
+  <text class="d" x="254" y="802">748.7 g, CG and inertia</text>
+  <text class="d" x="254" y="820">battery position as a setting</text>
+
+  <line class="a" x1="208" y1="782" x2="238" y2="782" marker-end="url(#ar)"/>
+
+  <line class="a" x1="388" y1="834" x2="388" y2="870" marker-end="url(#ar)"/>
+
+  <!-- Row 6: Gazebo (Claude Code) -->
+  <rect class="bcc" x="24" y="872" width="512" height="104" rx="10"/>
+  <rect class="pcc" x="38" y="884" width="88" height="18" rx="9"/>
+  <text class="g cc" x="46" y="897">CLAUDE CODE</text>
+  <text class="t" x="38" y="924">Gazebo model and checks</text>
+  <text class="d" x="38" y="944">Generated from the same CAD and masses</text>
+  <text class="d" x="38" y="962">Hover, lift, yaw and mass checks all pass</text>
+
+  <line class="a" x1="280" y1="976" x2="280" y2="1012" marker-end="url(#ar)"/>
+
+  <!-- Row 7: next (me) -->
+  <rect class="bme" x="24" y="1014" width="512" height="104" rx="10" stroke-dasharray="6 5"/>
+  <rect class="pme" x="38" y="1026" width="42" height="18" rx="9"/>
+  <text class="g me" x="46" y="1039">NEXT</text>
+  <text class="t" x="38" y="1066">Tune MARV V2's flight controller</text>
+  <text class="d" x="38" y="1086">against this model in Gazebo,</text>
+  <text class="d" x="38" y="1104">once MARV V2's drivers are done</text>
+</svg>

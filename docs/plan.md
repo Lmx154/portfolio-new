@@ -106,3 +106,22 @@ Verified live: `/` → `<div id="root"></div>` only; `/robots.txt` 404; Cloudfla
 > check if there is any existing mention of it, and if i did then just append some newer images [Image #2] and update the model in the project tile
 
 - DONE: no existing post covered the lidar redesign (only "instead of a lidar" in the first post) → new post `two-wheeler-lidar-redesign` (CAD M14–M20 + sim results; owner screenshot + fresh solidcraft-cli snapshots, cropped, of the assembly and LIDAR-MOUNT / TOF-MOUNT+TOF-CARRIER). Tile model: assembly/2wbal-01.json (Nov 5, M19/M20 state) → `file.export` OBJ (4.87M tris) → scratchpad obj2glb.mjs (stream parse, group by MTL colour, sRGB→linear, Z-up mm → Y-up m, dedup/weld/join/simplify ratio 0.07 err 0.001/meshopt, scene extras upright) → `public/two-wheeler-lidar.glb` (382k tris, 2.9 MB; new name to dodge caches; old two-wheeler.glb removed). OBJ export carries body colours only, so face-coloured boards are grey. Tile caption/description updated (servo ToF → lidar + fixed ToFs). M22 (HW-287 BMS, +5.4 mm) not in the assembly yet → framed as next. Fact-check 38 claims, 7 corrected. Build 11 pages + 113 tests green; browser: 5 images load, 0 errors; tile model renders upright. Not committed.
+
+## Redirect (verbatim, 2026-11-12)
+> nice. can you also make one on the modeling and sim develpment of the drone? here are the pictures /home/luis/Downloads/drone-chassis
+> the repo is in Projects/CAD/drone
+> […owner's high-level account: undocumented drone → flatbed scans + calipers → CAD; weighed parts; MARV V2 vertical pins → spacer bracket, fitted to real drone; FC out for driver work; params for sim; Claude made the Gazebo model; tune FC on it after drivers; Pi 5/sensor bay on hold…]
+> word it better than that. i just gave a high level brief of what i did and it may be out of order, just organize it in a way that makes sense and add in details that you get from the repo itself like the weights and stuff
+
+- DONE (not committed): new post `drone-cad-and-sim` (7 images: owner's 6, cropped, + repo `ft_scan_check.png` rotated). Facts from ~/Projects/CAD/drone (masses.yaml, mass_report, sim_check_report, drone_reference). No project tile exists for the drone; none added.
+- DONE (not committed): fact-check found 0 wrong, 7 imprecise → corrected (calipers scaled the 4 larger parts only; k_F fitted, top speed extrapolated from 2,060 g row; point masses noted; ">90% weighed" since owner's photo weighs the 170 g battery that the repo still tags PUBLISHED; connector housings vs top plate; drag "at each rotor"; top-plate 2.84 mm caveat). Build 12 pages; 7 images load, 0 console errors.
+
+## Redirect (verbatim, 2026-11-12)
+> i swapped frames
+> correct it to what the scale says
+> the post is correct it has been fitted.
+> add a project tile for it as well.
+> i feel like we're not emphasizing how important of a role claude code played using its CV tools along with solidcraft mcp and tools to bring this from scan to cad
+> yes i want to demonstrate the pipeline use a diagram if possible so people can visualize it
+
+- DONE (not committed): post notes the frame swap. Drone repo: masses.yaml battery PUBLISHED → MEASURED, spacer note "printed and fitted"; reran mass_properties/make_checklist/make_reference (measured share 93.8%); verbatim entry in its docs/plan.md. Post rewritten around the split (owner hands-on, Claude Code software): new CV-tools and SolidCraft sections from tools/trace_scan*.py and build_*.py docstrings, plus `assets/scan-to-sim-pipeline.svg` (amber = owner, cyan = Claude Code). New tile `quadcopter.json` (order 7) with `public/quadcopter.glb` (cad/drone.sc → OBJ 8.85M tris → 592k tris, 3.4 MB; carbon group recoloured to the CAD app's light grey so it reads on the dark site) + 3 images. Build 12 pages, 113 tests; diagram and tile model checked in the browser.
