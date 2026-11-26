@@ -1,0 +1,178 @@
+{
+  "type": "blog",
+  "id": "marv-v2-firmware-bring-up",
+  "title": "MARV V2 Firmware Bring-Up Before Flight",
+  "status": "published",
+  "date": "2026-11-25",
+  "sameDayOrder": 3,
+  "displayDate": "November 25, 2026",
+  "excerpt": "How I split flight and I/O across the RP2350’s two cores, then brought the Rust drivers, ground station, radio, ESCs, and logger together on one board.",
+  "readTime": "7 min read",
+  "tags": [
+    "Avionics",
+    "Embedded Rust",
+    "Firmware Design"
+  ],
+  "coverImage": "/content/blog/marv-v2-flight-stack/assets/dev-setup.webp",
+  "blocks": [
+    {
+      "id": "blk_marv_01",
+      "type": "paragraph",
+      "text": "I came into V2 with a few builds behind me. I'd built [Brunito](/blog/brunito-first-avionics-system) with the Rocket Launchers, then built [MARV V1](/blog/marv) for rocket telemetry. V1 also reached the point where I could spin the quad's motors on the bench. [That work taught me what to change](/blog/marv-v2), from how I read the sensors to how I powered the board. With V2 I wanted to test each driver on its own, bring the radio, ground station, motor outputs, and logging together, and take the next step from motor tests to actually flying the quad. That was the plan when [Rev 1 came back from manufacturing](/blog/marv-v2-bring-up)."
+    },
+    {
+      "id": "blk_marv_series",
+      "type": "paragraph",
+      "text": "Firmware bring-up · [First flight and position hold](/blog/marv-v2-flight-stack) · [Waypoint flight](/blog/marv-v2-waypoint-missions)"
+    },
+    {
+      "id": "blk_marv_start",
+      "type": "paragraph",
+      "text": "The November 9–18 stretch had its own satisfying milestones. I could see sensor data in the ground station, map the transmitter's sticks, save a calibration through a reboot, and spin a motor with a command from the laptop. Getting there in stages gave me a working system to build the controller on."
+    },
+    {
+      "id": "blk_marv_02",
+      "type": "heading",
+      "level": 2,
+      "text": "From bench demos to one firmware image"
+    },
+    {
+      "id": "blk_marv_03",
+      "type": "paragraph",
+      "text": "I started with the SD card. The original plan was a logger, and I changed direction partway through because I wanted reusable Rust drivers I could test away from the rest of the firmware. The SD card came first, followed by the two IMUs, the barometer, compass, GNSS receiver, PSRAM, and status LED. Each driver had a small test program and the flight firmware pinned the versions it used. That gave me somewhere to go back to whenever a peripheral worked on its own and failed in the full program."
+    },
+    {
+      "id": "blk_marv_04",
+      "type": "paragraph",
+      "text": "Combining the demos was where resource allocation got interesting. Five had picked the same pair of DMA channels, and three had picked the same programmable I/O block. Each demo had the board to itself. In the full program I had to assign the sensor buses, DMA channels, interrupts, and tasks so that they could all run together."
+    },
+    {
+      "id": "blk_marv_06",
+      "type": "image",
+      "src": "/content/blog/marv-v2-flight-stack/assets/dev-setup.webp",
+      "alt": "MARV quad and connected electronics on the development bench",
+      "caption": "The airframe on the bench during flight-stack development."
+    },
+    {
+      "id": "blk_marv_resource_architecture",
+      "type": "heading",
+      "level": 2,
+      "text": "The resource architecture is the part I’m proudest of"
+    },
+    {
+      "id": "blk_marv_cores",
+      "type": "paragraph",
+      "text": "My goal for the two RP2350 cores was isolation. The radio could deliver a burst of traffic or the SD card could take a while to finish a write. I wanted the time from gyro sample to motor command to stay predictable, so I gave that path its own core."
+    },
+    {
+      "id": "blk_marv_resource_diagram",
+      "type": "image",
+      "src": "assets/rp2350-resource-architecture.webp",
+      "alt": "RP2350 resource map. Core 1 runs estimation and flight control in internal SRAM. SPI0 and DMA 0–1 serve the ICM-45686. SPI1 and DMA 2–3 serve the LSM6DSK320X. PIO2 state machine 0 drives four ESCs with DShot and DMA 5 captures replies. Those transfers use DMA IRQ 0. Core 0 sends sticks and slower sensor readings through triple buffers. Core 1 publishes status snapshots and passes flight records to Core 0 through a ring buffer. On Core 0, USB CDC serves the ground station, UART0 serves ExpressLRS, UART1 serves the SAM-M10Q GNSS, I2C0 serves the compass, I2C1 serves the barometer, and the ADC measures the battery. PIO1 state machine 1 drives the status LED, and flash holds settings saved while disarmed. Core 0 also handles the watchdog. A 1 MiB log buffer in the 16 MiB PSRAM feeds the microSD card through PIO0 state machine 0, DMA 4, and DMA IRQ 1.",
+      "caption": "How the flight-tested firmware assigns the RP2350’s controllers, DMA, PIO state machines, and memory."
+    },
+    {
+      "id": "blk_marv_dma",
+      "type": "paragraph",
+      "text": "Separating the tasks was only part of it. Each driver had to be constructed on the core that would handle its interrupt. The two IMUs and DShot reply capture used the flight core's DMA interrupt, while the SD card used a separate channel and completion interrupt on the I/O core. The SD bus and DShot also had their own programmable I/O blocks. I put the allocations in a resource table and added startup checks for the interrupt assignments. That way I could verify the split on the actual board."
+    },
+    {
+      "id": "blk_marv_resource_handoff",
+      "type": "heading",
+      "level": 3,
+      "text": "Passing data between cores"
+    },
+    {
+      "id": "blk_marv_handoff",
+      "type": "paragraph",
+      "text": "I wanted the flight core to be able to take the latest complete input and keep going. The I/O core published timestamped, mapped stick inputs and slower sensor readings through triple buffers. The flight core could read a snapshot while the other core prepared the next value. In the other direction, the flight core published status through sequence-checked snapshots and wrote flight records into a bounded ring with one writer and one reader. If the ring filled, the firmware would count the dropped record and carry on with the next flight step."
+    },
+    {
+      "id": "blk_marv_05",
+      "type": "paragraph",
+      "text": "The SD measurements made that decision easy to explain. Batching writes took throughput from 0.41 to 7.42 MB/s in one run, but another run still saw a single write take about 132 ms. That's over a hundred flight steps at 800 Hz. The flight core handed off each record and the I/O core dealt with the card. Later, I moved the larger storage-side buffer to PSRAM so it could absorb longer stalls and hold more flight data."
+    },
+    {
+      "id": "blk_marv_resource_memory",
+      "type": "heading",
+      "level": 3,
+      "text": "Keeping the flight path in SRAM"
+    },
+    {
+      "id": "blk_marv_sram",
+      "type": "paragraph",
+      "text": "I also wanted to control where the flight core got its instructions and constants. Running from flash uses the chip's execute-in-place cache, and a cache miss can add variable delay. PSRAM sits behind the same cache, so I used it for the logging buffer and kept the flight path in internal SRAM. That meant covering the code the flight core called, along with its interrupt handlers and constants. Explicit settings saves were a special case. Flash operations pause the flight core, so saving and arming were coordinated and settings saves stayed on the ground."
+    },
+    {
+      "id": "blk_marv_resource_proof",
+      "type": "paragraph",
+      "text": "The part I enjoyed most was making these rules testable. The normal flash workflow checks the built firmware for calls that would take the flight core back into flash. On the board, I parked the I/O core for a one-second measurement with DShot running and measured zero accesses through the execute-in-place interface. A deliberately broken build registered more than 184,000 in the same check. Seeing the control fail made the zero in the real build mean something. It also gave me a check I could run again as estimation and control grew."
+    },
+    {
+      "id": "blk_marv_resource_reflection",
+      "type": "paragraph",
+      "text": "I’m proud of this because I could use it as the rest of the project got bigger. Full-rate logs helped me diagnose the first hovers, and later I could add more estimator and guidance records while keeping the same handoff between flight and storage. Making the two cores cooperate was a project in itself. Getting them to cooperate without making the flight loop wait on a file write was the design I wanted."
+    },
+    {
+      "id": "blk_marv_07",
+      "type": "heading",
+      "level": 2,
+      "text": "Getting the board to tell me what was happening"
+    },
+    {
+      "id": "blk_marv_08",
+      "type": "paragraph",
+      "text": "USB and the ground station gave me a live view of the integrated board. I could see device status, watch sensor readings change, and request an action from the bench. I brought up the ExpressLRS path in stages, starting with the raw bytes from the receiver, then decoding CRSF, handling telemetry, and tracking whether new stick reports were coming in. That gave me a way to check each layer of the radio link before using it for control."
+    },
+    {
+      "id": "blk_marv_09",
+      "type": "image",
+      "src": "/content/blog/marv-v2-flight-stack/assets/ant-rdio-mnt.webp",
+      "alt": "Radio and antenna hardware mounted alongside the drone frame",
+      "caption": "Radio and antenna placement on the airframe."
+    },
+    {
+      "id": "blk_marv_10",
+      "type": "paragraph",
+      "text": "Getting a stick report was only the beginning. An endpoint on my transmitter had to turn into the intended command on the intended channel. Trim had to mean center. The IMU and the compass had to agree on which way the assembled quad was facing. The parameter table grew from 26 entries to 70 through the radio mapping and configuration work. I checked that a transmitter calibration survived a save and reboot. I also had to account for what the other core was doing during a flash write, which meant coordinating saving and arming."
+    },
+    {
+      "id": "blk_marv_11",
+      "type": "image",
+      "src": "/content/blog/marv-v2-flight-stack/assets/gcs-telemetry.webp",
+      "alt": "MARV ground station showing several live sensor plots and a vehicle status sidebar",
+      "caption": "Live telemetry in the MARV ground station."
+    },
+    {
+      "id": "blk_marv_12",
+      "type": "paragraph",
+      "text": "During one debug-probe reset, the barometer got interrupted in the middle of a transfer and held the data line low. The driver stayed waiting and the device row in the ground station stayed stuck. A transaction deadline and a bus clear gave the firmware a way to recover. That was a good example of why I wanted to test the full board as well as each driver."
+    },
+    {
+      "id": "blk_marv_oom",
+      "type": "paragraph",
+      "text": "One ground-station bug was especially memorable. A three-second calibration test kept emitting its final action until it consumed more than 21 GB of memory and took out the terminal session. Once the action marked itself finished, the test could run to completion. I kept the test because it exercised the whole calibration sequence."
+    },
+    {
+      "id": "blk_marv_13",
+      "type": "heading",
+      "level": 2,
+      "text": "Seeing all four motors respond"
+    },
+    {
+      "id": "blk_marv_14",
+      "type": "paragraph",
+      "text": "The ESC work started with Stop frames and measurements on the bench. I measured the reply timing from the AM32 controllers for bidirectional DShot. I also built a standalone passthrough demo that let the real configurator read settings, change one, flash an ESC, and verify the result byte for byte. For flight, the firmware used the DShot path to send commands and read telemetry from all four ESCs."
+    },
+    {
+      "id": "blk_marv_15",
+      "type": "paragraph",
+      "text": "After soldering the motors, I repeated the zero-throttle checks. Then I could spin each motor individually at low power with the props off and see which one answered. The integrated firmware later reported all four online at a 1 kHz DShot exchange rate, including voltage and temperature telemetry. By November 18, I could request a motor test from the ground station and watch the board act on it. I wanted that direct check in case a motor did something I didn't understand in the field."
+    },
+    {
+      "id": "blk_marv_16",
+      "type": "paragraph",
+      "text": "By the end of this stretch, the board felt like a system I could actually work with. I could see the readings live, change settings, and pull a recording to look at later. That last part turned out to be especially valuable. In [the first-flight post](/blog/marv-v2-flight-stack), the logger helps explain a lean I had first tried to fix by moving the battery."
+    }
+  ]
+}

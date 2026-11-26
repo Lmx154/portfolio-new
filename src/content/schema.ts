@@ -118,6 +118,8 @@ export const BlogPostSchema = z
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD').optional(),
     /** Human-friendly date shown in the UI (e.g. "October 18, 2025"). */
     displayDate: z.string().optional(),
+    /** Lower numbers appear earlier among posts with the same date. */
+    sameDayOrder: z.number().int().positive().optional(),
     excerpt: z.string().default(''),
     readTime: z.string().default(''),
     tags: z.array(z.string()).default([]),
@@ -283,3 +285,11 @@ export type About = z.infer<typeof AboutSchema>;
 export type Cta = z.infer<typeof CtaSchema>;
 export type SiteLinks = z.infer<typeof SiteLinksSchema>;
 export type Site = z.infer<typeof SiteSchema>;
+
+type BlogPostOrder = Pick<BlogPost, 'date' | 'sameDayOrder'>;
+
+/** Newest dates first, then the reading order for posts published together. */
+export function compareBlogPostOrder(a: BlogPostOrder, b: BlogPostOrder): number {
+  return (b.date ?? '').localeCompare(a.date ?? '')
+    || (a.sameDayOrder ?? Number.MAX_SAFE_INTEGER) - (b.sameDayOrder ?? Number.MAX_SAFE_INTEGER);
+}

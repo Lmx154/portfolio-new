@@ -26,7 +26,7 @@ import type { SpaceCtx } from '../space/types';
  *
  * Extras for realism: one large "hero" galaxy (a real 3D point-cloud disk +
  * bulge + dust + HII regions, see src/space/galaxy.ts) drifting slowly past
- * every so often, occasional shooting stars, and subtle per-star twinkle.
+ * every so often, and occasional shooting stars.
  *
  * Pure Three.js — no asset files, no new deps.
  */
@@ -327,8 +327,10 @@ const SpaceBackground = ({ warpSignal = 0 }: { warpSignal?: number }) => {
       // Shooting stars (not during warp — streaks own that moment).
       meteors.update(dt, warpEased);
 
-      camera.position.x += (targetX * 26 - camera.position.x) * 0.03;
-      camera.position.y += (-targetY * 26 - camera.position.y) * 0.03;
+      // Match the original 60 Hz response at any display refresh rate.
+      const parallaxBlend = 1 - Math.pow(0.97, dt * 60);
+      camera.position.x += (targetX * 26 - camera.position.x) * parallaxBlend;
+      camera.position.y += (-targetY * 26 - camera.position.y) * parallaxBlend;
       camera.lookAt(0, 0, -600);
 
       renderer.render(scene, camera);

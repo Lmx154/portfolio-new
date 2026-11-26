@@ -1,0 +1,16 @@
+- banner [ref=f6e5]:
+  - generic [ref=f6e8]:
+    - navigation "Primary" [ref=f6e9]:
+      - button "HOME" [ref=f6e10] [cursor=pointer]
+      - button "BLOG" [ref=f6e11] [cursor=pointer]
+      - button "PROJECTS" [ref=f6e13] [cursor=pointer]
+      - button "ABOUT" [ref=f6e14] [cursor=pointer]
+    - generic [ref=f6e15]:
+      - link "GitHub" [ref=f6e16] [cursor=pointer]:
+        - /url: https://github.com/Lmx154
+      - link "LinkedIn" [ref=f6e19] [cursor=pointer]:
+        - /url: https://www.linkedin.com/in/luismtz-2b54f/
+      - link "X (Twitter)" [ref=f6e22] [cursor=pointer]:
+        - /url: https://x.com/Lmx154
+      - link "Email" [ref=f6e25] [cursor=pointer]:
+        - /url: mailto:Luis_Mtz907@live.com

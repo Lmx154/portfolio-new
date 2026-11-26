@@ -31,7 +31,7 @@
       "caption": "Printing the spacer"
     }
   ],
-  "description": "My 7-inch quadcopter, modeled so I can design sensor mounts against it and tune MARV V2's flight control in simulation. I scanned the frame's parts at 300 dpi, measured them with calipers and weighed them one by one. Claude Code measured the scans with computer vision tools it wrote, built each part as a parametric SolidCraft design through its MCP server and CLI, and generated the assembly, so the model's 748.7 g, center of gravity and inertia come from the real drone. A printed spacer makes room for MARV V2's header connectors. Claude Code also generated the Gazebo model from the same CAD and masses, with motor constants fitted to Emax's thrust data, and it passes its hover, lift, yaw and mass checks. Next: finish MARV V2's drivers and tune the flight controller in simulation. A bay for a Pi 5, lidar, ToF sensor, GPS and magnetometer comes once it flies. Drag to explore the full CAD model in 3D.",
+  "description": "My 7-inch quadcopter is the flight test platform for MARV V2. I scanned the frame parts at 300 dpi, measured them with calipers, and weighed them individually. Claude Code used the scans to build the parametric SolidCraft assembly and generate a Gazebo model from the same geometry and mass data. I put the measured 914 g all-up weight into the flight simulation model and refined the thrust model with real flight logs. The quad has now flown outdoor hovers, ESKF position hold, and waypoint routes. I’m working on the next sensor stack with LiDAR, a Raspberry Pi 5, and computer vision. Drag to explore the full CAD assembly in 3D.",
   "tags": [
     "Drones",
     "CAD",

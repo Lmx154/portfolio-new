@@ -1,0 +1,541 @@
+- generic [ref=f7e6]:
+  - banner [ref=f7e7]:
+    - generic [ref=f7e10]:
+      - navigation "Primary" [ref=f7e11]:
+        - button "HOME" [ref=f7e12] [cursor=pointer]
+        - button "BLOG" [ref=f7e14] [cursor=pointer]
+        - button "PROJECTS" [ref=f7e15] [cursor=pointer]
+        - button "ABOUT" [ref=f7e16] [cursor=pointer]
+      - generic [ref=f7e17]:
+        - link "GitHub" [ref=f7e18] [cursor=pointer]:
+          - /url: https://github.com/Lmx154
+        - link "LinkedIn" [ref=f7e21] [cursor=pointer]:
+          - /url: https://www.linkedin.com/in/luismtz-2b54f/
+        - link "X (Twitter)" [ref=f7e24] [cursor=pointer]:
+          - /url: https://x.com/Lmx154
+        - link "Email" [ref=f7e27] [cursor=pointer]:
+          - /url: mailto:Luis_Mtz907@live.com
+  - main [ref=f7e30]:
+    - generic [ref=f7e31]:
+      - generic [ref=f7e33]:
+        - paragraph [ref=f7e34]: // LUIS MARTINEZ
+        - heading "DEVELOPER. ROBOTICS ENGINEER. INNOVATOR." [level=1] [ref=f7e35]:
+          - generic [ref=f7e36]: DEVELOPER.
+          - generic [ref=f7e37]: ROBOTICS ENGINEER.
+          - generic [ref=f7e38]: INNOVATOR.
+        - generic [ref=f7e39]:
+          - button "VIEW BLOG" [ref=f7e40] [cursor=pointer]
+          - button "PROJECTS" [ref=f7e41] [cursor=pointer]
+      - generic [aria-hidden]:
+        - generic: Scroll to descend
+        - generic: LOCAL 17:11 CST
+    - generic [ref=f7e43]:
+      - generic [ref=f7e44]:
+        - generic [ref=f7e45]:
+          - generic [ref=f7e46]: 01 /
+          - heading "Blog" [level=2] [ref=f7e47]
+        - generic [ref=f7e48]: 10 posts
+      - generic [ref=f7e51]:
+        - 'link "2026.11.12 8 min From Flatbed Scans to Gazebo: Modeling My 7-Inch Drone with Claude Code Nothing on my 7-inch quad was documented well enough to design mounts against. So I scanned, measured and weighed its parts, and Claude Code turned the scans into a parametric CAD assembly with computer vision tools it wrote and SolidCraft, then generated a Gazebo model to tune MARV V2''s flight control with. Drones CAD Computer Vision" [ref=f7e52] [cursor=pointer]':
+          - /url: /blog/drone-cad-and-sim
+          - generic [ref=f7e53]:
+            - time [ref=f7e54]: 2026.11.12
+            - generic [aria-hidden] [ref=f7e55]: ·
+            - generic [ref=f7e56]: 8 min
+          - 'heading "From Flatbed Scans to Gazebo: Modeling My 7-Inch Drone with Claude Code" [level=3] [ref=f7e57]'
+          - paragraph [ref=f7e58]: Nothing on my 7-inch quad was documented well enough to design mounts against. So I scanned, measured and weighed its parts, and Claude Code turned the scans into a parametric CAD assembly with computer vision tools it wrote and SolidCraft, then generated a Gazebo model to tune MARV V2's flight control with.
+          - generic [ref=f7e59]:
+            - generic [ref=f7e60]: Drones
+            - generic [ref=f7e61]: CAD
+            - generic [ref=f7e62]: Computer Vision
+          - generic [aria-hidden] [ref=f7e63]: →
+        - 'link "2026.11.12 10 min MARV V2 Is In: Bring-Up, Rust Drivers and a First Ground Station Rev 1 of the MARV V2 flight computer arrived from JLCPCB. Assembly, a bring-up suite that checks every device on the board, stress tests, one Rust driver crate per device, battery power, a first ground station, and what changes for Rev 2. Avionics Embedded Rust Hardware Bring-Up" [ref=f7e64] [cursor=pointer]':
+          - /url: /blog/marv-v2-bring-up
+          - generic [ref=f7e65]:
+            - time [ref=f7e66]: 2026.11.12
+            - generic [aria-hidden] [ref=f7e67]: ·
+            - generic [ref=f7e68]: 10 min
+          - 'heading "MARV V2 Is In: Bring-Up, Rust Drivers and a First Ground Station" [level=3] [ref=f7e69]'
+          - paragraph [ref=f7e70]: Rev 1 of the MARV V2 flight computer arrived from JLCPCB. Assembly, a bring-up suite that checks every device on the board, stress tests, one Rust driver crate per device, battery power, a first ground station, and what changes for Rev 2.
+          - generic [ref=f7e71]:
+            - generic [ref=f7e72]: Avionics
+            - generic [ref=f7e73]: Embedded Rust
+            - generic [ref=f7e74]: Hardware Bring-Up
+          - generic [aria-hidden] [ref=f7e75]: →
+        - 'link "2026.11.12 5 min Two-Wheeler Redesign: A Lidar on Top The self-balancing robot trades its servo-swept ToF sensor for a 360° lidar on its highest point and two fixed, tilt-adjustable ToF sensors for the collision guard. Here is how the CAD changed, and how the new model holds up in simulation. Robotics Autonomy SLAM" [ref=f7e76] [cursor=pointer]':
+          - /url: /blog/two-wheeler-lidar-redesign
+          - generic [ref=f7e77]:
+            - time [ref=f7e78]: 2026.11.12
+            - generic [aria-hidden] [ref=f7e79]: ·
+            - generic [ref=f7e80]: 5 min
+          - 'heading "Two-Wheeler Redesign: A Lidar on Top" [level=3] [ref=f7e81]'
+          - paragraph [ref=f7e82]: The self-balancing robot trades its servo-swept ToF sensor for a 360° lidar on its highest point and two fixed, tilt-adjustable ToF sensors for the collision guard. Here is how the CAD changed, and how the new model holds up in simulation.
+          - generic [ref=f7e83]:
+            - generic [ref=f7e84]: Robotics
+            - generic [ref=f7e85]: Autonomy
+            - generic [ref=f7e86]: SLAM
+          - generic [aria-hidden] [ref=f7e87]: →
+        - 'link "2026.11.03 13 min Two-Wheeler Update: From a Balancing Sim to a First SLAM Map Building the autonomy stack one tested layer at a time in Gazebo: balance, driving, ToF collision avoidance, maze navigation, self-righting, camera floor sensing and a first SLAM map, plus what the first test prints taught me. Robotics Autonomy SLAM" [ref=f7e88] [cursor=pointer]':
+          - /url: /blog/two-wheeler-progress-update
+          - generic [ref=f7e89]:
+            - time [ref=f7e90]: 2026.11.03
+            - generic [aria-hidden] [ref=f7e91]: ·
+            - generic [ref=f7e92]: 13 min
+          - 'heading "Two-Wheeler Update: From a Balancing Sim to a First SLAM Map" [level=3] [ref=f7e93]'
+          - paragraph [ref=f7e94]: "Building the autonomy stack one tested layer at a time in Gazebo: balance, driving, ToF collision avoidance, maze navigation, self-righting, camera floor sensing and a first SLAM map, plus what the first test prints taught me."
+          - generic [ref=f7e95]:
+            - generic [ref=f7e96]: Robotics
+            - generic [ref=f7e97]: Autonomy
+            - generic [ref=f7e98]: SLAM
+          - generic [aria-hidden] [ref=f7e99]: →
+        - 'link "2026.11.02 8 min Building a Self-Balancing Robot for Autonomy A self-balancing two-wheeler built as an autonomy testbed: hard real-time balance control on a Pico 2, a vision model on a Raspberry Pi 5, and a servo-swept time-of-flight sensor for landmark-based SLAM. Robotics Autonomy SLAM" [ref=f7e100] [cursor=pointer]':
+          - /url: /blog/two-wheeler-autonomy-platform
+          - generic [ref=f7e101]:
+            - time [ref=f7e102]: 2026.11.02
+            - generic [aria-hidden] [ref=f7e103]: ·
+            - generic [ref=f7e104]: 8 min
+          - heading "Building a Self-Balancing Robot for Autonomy" [level=3] [ref=f7e105]
+          - paragraph [ref=f7e106]: "A self-balancing two-wheeler built as an autonomy testbed: hard real-time balance control on a Pico 2, a vision model on a Raspberry Pi 5, and a servo-swept time-of-flight sensor for landmark-based SLAM."
+          - generic [ref=f7e107]:
+            - generic [ref=f7e108]: Robotics
+            - generic [ref=f7e109]: Autonomy
+            - generic [ref=f7e110]: SLAM
+          - generic [aria-hidden] [ref=f7e111]: →
+        - 'link "2026.09.19 6 min MARV V2: Redesigning the Flight Computer What a season of flying MARV V1 taught me, how those lessons shaped the second revision of the flight computer, and how Rev 1 made it to manufacturing. Avionics PCB Design Firmware Design" [ref=f7e112] [cursor=pointer]':
+          - /url: /blog/marv-v2
+          - generic [ref=f7e113]:
+            - time [ref=f7e114]: 2026.09.19
+            - generic [aria-hidden] [ref=f7e115]: ·
+            - generic [ref=f7e116]: 6 min
+          - 'heading "MARV V2: Redesigning the Flight Computer" [level=3] [ref=f7e117]'
+          - paragraph [ref=f7e118]: What a season of flying MARV V1 taught me, how those lessons shaped the second revision of the flight computer, and how Rev 1 made it to manufacturing.
+          - generic [ref=f7e119]:
+            - generic [ref=f7e120]: Avionics
+            - generic [ref=f7e121]: PCB Design
+            - generic [ref=f7e122]: Firmware Design
+          - generic [aria-hidden] [ref=f7e123]: →
+        - link "2025.10.20 5 min Getting a better understanding of flight controllers with my first drone! An insight on how I picked out my first drone's hardware and the lessons Troubleshooting Soldering Drones" [ref=f7e124] [cursor=pointer]:
+          - /url: /blog/getting-a-better-understanding-of-flight-controllers-with-my-first-drone
+          - generic [ref=f7e125]:
+            - time [ref=f7e126]: 2025.10.20
+            - generic [aria-hidden] [ref=f7e127]: ·
+            - generic [ref=f7e128]: 5 min
+          - heading "Getting a better understanding of flight controllers with my first drone!" [level=3] [ref=f7e129]
+          - paragraph [ref=f7e130]: An insight on how I picked out my first drone's hardware and the lessons
+          - generic [ref=f7e131]:
+            - generic [ref=f7e132]: Troubleshooting
+            - generic [ref=f7e133]: Soldering
+            - generic [ref=f7e134]: Drones
+          - generic [aria-hidden] [ref=f7e135]: →
+        - link "2025.10.18 2 min MARV PCB Development update A brief update on how the hardware aspect of MARV is progressing. PCB Design Hardware Design Schematic" [ref=f7e136] [cursor=pointer]:
+          - /url: /blog/marv-pcb-development-update
+          - generic [ref=f7e137]:
+            - time [ref=f7e138]: 2025.10.18
+            - generic [aria-hidden] [ref=f7e139]: ·
+            - generic [ref=f7e140]: 2 min
+          - heading "MARV PCB Development update" [level=3] [ref=f7e141]
+          - paragraph [ref=f7e142]: A brief update on how the hardware aspect of MARV is progressing.
+          - generic [ref=f7e143]:
+            - generic [ref=f7e144]: PCB Design
+            - generic [ref=f7e145]: Hardware Design
+            - generic [ref=f7e146]: Schematic
+          - generic [aria-hidden] [ref=f7e147]: →
+        - link "2025.10.18 4 min MARV Prototyping Blog documenting the initial development of MARV, RL's next gen flight computer Avionics Rust Embedded" [ref=f7e148] [cursor=pointer]:
+          - /url: /blog/marv
+          - generic [ref=f7e149]:
+            - time [ref=f7e150]: 2025.10.18
+            - generic [aria-hidden] [ref=f7e151]: ·
+            - generic [ref=f7e152]: 4 min
+          - heading "MARV Prototyping" [level=3] [ref=f7e153]
+          - paragraph [ref=f7e154]: Blog documenting the initial development of MARV, RL's next gen flight computer
+          - generic [ref=f7e155]:
+            - generic [ref=f7e156]: Avionics
+            - generic [ref=f7e157]: Rust
+            - generic [ref=f7e158]: Embedded
+          - generic [aria-hidden] [ref=f7e159]: →
+        - link "2025.07.11 10 min Brunito - The First Avionics System at the Rocket Launchers for Disparado The inspiring journey of developing Brunito, our contingency flight computer, amid trade disruptions and tight deadlines. Avionics Flight Computer STM32" [ref=f7e160] [cursor=pointer]:
+          - /url: /blog/brunito-first-avionics-system
+          - generic [ref=f7e161]:
+            - time [ref=f7e162]: 2025.07.11
+            - generic [aria-hidden] [ref=f7e163]: ·
+            - generic [ref=f7e164]: 10 min
+          - heading "Brunito - The First Avionics System at the Rocket Launchers for Disparado" [level=3] [ref=f7e165]
+          - paragraph [ref=f7e166]: The inspiring journey of developing Brunito, our contingency flight computer, amid trade disruptions and tight deadlines.
+          - generic [ref=f7e167]:
+            - generic [ref=f7e168]: Avionics
+            - generic [ref=f7e169]: Flight Computer
+            - generic [ref=f7e170]: STM32
+          - generic [aria-hidden] [ref=f7e171]: →
+    - generic [ref=f7e173]:
+      - generic [ref=f7e174]:
+        - generic [ref=f7e175]:
+          - generic [ref=f7e176]: 02 /
+          - heading "Projects" [level=2] [ref=f7e177]
+        - generic [ref=f7e178]: 11 builds
+      - generic [ref=f7e181]:
+        - generic [ref=f7e182]:
+          - generic [ref=f7e184]:
+            - generic [ref=f7e185]: 3D model
+            - button "Open Autonomous Two-Wheeler media" [ref=f7e188]
+            - button "Previous" [ref=f7e189] [cursor=pointer]
+            - button "Next" [ref=f7e192] [cursor=pointer]
+            - generic: 1 / 5
+          - generic [ref=f7e195]:
+            - heading "Autonomous Two-Wheeler" [level=3] [ref=f7e197]
+            - generic [ref=f7e200]: In Progress
+            - paragraph [ref=f7e203]: "A self-balancing two-wheeled robot built as an autonomy testbed. The real-time layer, a Rust LQR balance controller and a collision guard, is written for a Pico 2. A Raspberry Pi 5 handles camera perception and SLAM, with a 360° lidar on top for mapping and fixed front and rear time-of-flight sensors for the collision guard. In Gazebo simulation, the stack balances, drives on command, avoids obstacles, solves mazes, stands back up after a fall and builds a map, and each layer is scored against ground truth. Next: real SLAM, and printing the robot. Drag to explore the full CAD model in 3D."
+            - generic [ref=f7e204]:
+              - generic [ref=f7e205]: Robotics
+              - generic [ref=f7e206]: Autonomy
+              - generic [ref=f7e207]: SLAM
+              - generic [ref=f7e208]: ROS 2
+              - generic [ref=f7e209]: Rust
+              - generic [ref=f7e210]: Gazebo
+              - generic [ref=f7e211]: CAD
+        - generic [ref=f7e212]:
+          - generic [ref=f7e214]:
+            - generic [ref=f7e215]: 3D model
+            - button "Open MARV media" [ref=f7e218]
+            - button "Previous" [ref=f7e219] [cursor=pointer]
+            - button "Next" [ref=f7e222] [cursor=pointer]
+            - generic: 1 / 2
+          - generic [ref=f7e225]:
+            - heading "MARV" [level=3] [ref=f7e227]
+            - generic [ref=f7e230]: Completed
+            - paragraph [ref=f7e233]: Modular Avionics for Rockets and Vehicles — the next-generation flight computer for the UTRGV Rocket Launchers, succeeding Brunito. A dual-core RP2350 platform with a Rust firmware stack and a custom sensor suite. Drag to explore the boards in 3D; use the arrows to switch boards.
+            - generic [ref=f7e234]:
+              - generic [ref=f7e235]: Rust
+              - generic [ref=f7e236]: Embedded
+              - generic [ref=f7e237]: RP2350
+              - generic [ref=f7e238]: PCB
+              - generic [ref=f7e239]: Avionics
+        - generic [ref=f7e240]:
+          - generic [ref=f7e242]:
+            - generic [ref=f7e243]: 3D model
+            - button "Open MARV V2 media" [ref=f7e246]
+            - button "Previous" [ref=f7e247] [cursor=pointer]
+            - button "Next" [ref=f7e250] [cursor=pointer]
+            - generic: 1 / 3
+          - generic [ref=f7e253]:
+            - heading "MARV V2" [level=3] [ref=f7e255]
+            - generic [ref=f7e258]: In Progress
+            - paragraph [ref=f7e261]: The second revision of the MARV flight computer. Rev 1 is built and fully brought up, and Rev 2 is underway. An RP2354B flight controller for rockets and drones with an ICM-45686 IMU, an LSM6DSK320X ±320 g high-g IMU and a BMP581 barometer, each on its own bus with data-ready interrupts, plus four-bit microSD logging over PIO, USB-C, a separate sensor LDO and a plug-on 5 V converter. Every change traces back to a problem V1 showed in flight. Drag to explore the board in 3D.
+            - generic [ref=f7e262]:
+              - generic [ref=f7e263]: KiCad
+              - generic [ref=f7e264]: PCB
+              - generic [ref=f7e265]: RP2350
+              - generic [ref=f7e266]: Avionics
+              - generic [ref=f7e267]: Hardware Design
+            - link "View on GitHub" [ref=f7e269] [cursor=pointer]:
+              - /url: https://github.com/Lmx154/MARV-V2-PCB
+        - generic [ref=f7e272]:
+          - generic [ref=f7e274]:
+            - generic [ref=f7e275]: 3D model
+            - button "Open 7-Inch Quadcopter media" [ref=f7e278]
+            - button "Previous" [ref=f7e279] [cursor=pointer]
+            - button "Next" [ref=f7e282] [cursor=pointer]
+            - generic: 1 / 4
+          - generic [ref=f7e285]:
+            - heading "7-Inch Quadcopter" [level=3] [ref=f7e287]
+            - generic [ref=f7e290]: In Progress
+            - paragraph [ref=f7e293]: "My 7-inch quadcopter, modeled so I can design sensor mounts against it and tune MARV V2's flight control in simulation. I scanned the frame's parts at 300 dpi, measured them with calipers and weighed them one by one. Claude Code measured the scans with computer vision tools it wrote, built each part as a parametric SolidCraft design through its MCP server and CLI, and generated the assembly, so the model's 748.7 g, center of gravity and inertia come from the real drone. A printed spacer makes room for MARV V2's header connectors. Claude Code also generated the Gazebo model from the same CAD and masses, with motor constants fitted to Emax's thrust data, and it passes its hover, lift, yaw and mass checks. Next: finish MARV V2's drivers and tune the flight controller in simulation. A bay for a Pi 5, lidar, ToF sensor, GPS and magnetometer comes once it flies. Drag to explore the full CAD model in 3D."
+            - generic [ref=f7e294]:
+              - generic [ref=f7e295]: Drones
+              - generic [ref=f7e296]: CAD
+              - generic [ref=f7e297]: Gazebo
+              - generic [ref=f7e298]: Simulation
+              - generic [ref=f7e299]: 3D Printing
+              - generic [ref=f7e300]: Avionics
+        - generic [ref=f7e301]:
+          - generic [ref=f7e303]:
+            - img "ROCKET GAME" [ref=f7e304]
+            - button "Open ROCKET GAME media" [ref=f7e305]
+          - generic [ref=f7e306]:
+            - heading "ROCKET GAME" [level=3] [ref=f7e308]
+            - generic [ref=f7e311]: Completed
+            - paragraph [ref=f7e314]: A 2D arcade-style rocket game showcasing cross-platform development with Flutter and Dart, featuring a custom ASP.NET Core (C#) backend. Implemented custom API for score submission, deployed on Azure with PostgreSQL on Neon.tech.
+            - generic [ref=f7e315]:
+              - generic [ref=f7e316]: Flutter
+              - generic [ref=f7e317]: Dart
+              - generic [ref=f7e318]: C#
+              - generic [ref=f7e319]: ASP.NET
+              - generic [ref=f7e320]: SQL
+              - generic [ref=f7e321]: Postgres
+            - link "View on GitHub" [ref=f7e323] [cursor=pointer]:
+              - /url: https://github.com/Lmx154/dart_demo
+        - generic [ref=f7e326]:
+          - generic [ref=f7e328]:
+            - img "TDAS-GUI" [ref=f7e329]
+            - button "Open TDAS-GUI media" [ref=f7e330]
+          - generic [ref=f7e331]:
+            - heading "TDAS-GUI" [level=3] [ref=f7e333]
+            - generic [ref=f7e336]: Completed
+            - paragraph [ref=f7e339]: Modernized the UTRGV Rocket Launchers telemetry visualization system. Built with Tauri 2.0, utilizing Rust for backend performance and React for frontend. Integrated high-frequency data handling (up to 100Hz).
+            - generic [ref=f7e340]:
+              - generic [ref=f7e341]: Rust
+              - generic [ref=f7e342]: Tauri
+              - generic [ref=f7e343]: Tailwind
+              - generic [ref=f7e344]: JavaScript
+              - generic [ref=f7e345]: React
+            - link "View on GitHub" [ref=f7e347] [cursor=pointer]:
+              - /url: https://github.com/Lmx154/TDAS-GUI
+        - generic [ref=f7e350]:
+          - generic [ref=f7e352]:
+            - img "PORTFOLIO SITE" [ref=f7e353]
+            - button "Open PORTFOLIO SITE media" [ref=f7e354]
+          - generic [ref=f7e355]:
+            - heading "PORTFOLIO SITE" [level=3] [ref=f7e357]
+            - generic [ref=f7e360]: Completed
+            - paragraph [ref=f7e363]: A refresh of my personal portfolio website, emphasizing scalable architecture and modern web development practices. Built with TypeScript and React, styled with Tailwind CSS, hosted on Render.
+            - generic [ref=f7e364]:
+              - generic [ref=f7e365]: TypeScript
+              - generic [ref=f7e366]: React
+              - generic [ref=f7e367]: Tailwind
+              - generic [ref=f7e368]: Node.js
+            - generic [ref=f7e369]:
+              - link "View on GitHub" [ref=f7e370] [cursor=pointer]:
+                - /url: https://github.com/Lmx154/portfolio
+              - link "Live Demo" [ref=f7e373] [cursor=pointer]:
+                - /url: https://luisamartinez.dev/
+        - generic [ref=f7e374]:
+          - generic [ref=f7e376]:
+            - img "SENTINEL" [ref=f7e377]
+            - button "Open SENTINEL media" [ref=f7e378]
+          - generic [ref=f7e379]:
+            - heading "SENTINEL" [level=3] [ref=f7e381]
+            - generic [ref=f7e384]: Completed
+            - paragraph [ref=f7e387]: Next-generation rocket telemetry system for UTRGV Rocket Launchers, building on the TDAS-GUI prototype. Implemented real-time 3D rocket orientation tracking and flight trajectory visualization.
+            - generic [ref=f7e388]:
+              - generic [ref=f7e389]: Rust
+              - generic [ref=f7e390]: Tauri
+              - generic [ref=f7e391]: Tailwind
+              - generic [ref=f7e392]: JavaScript
+              - generic [ref=f7e393]: React
+            - link "View on GitHub" [ref=f7e395] [cursor=pointer]:
+              - /url: https://github.com/andrewalvrz/SENTINEL
+        - generic [ref=f7e398]:
+          - generic [ref=f7e400]:
+            - img "BRUNITO" [ref=f7e401]
+            - button "Open BRUNITO media" [ref=f7e402]
+          - generic [ref=f7e403]:
+            - heading "BRUNITO" [level=3] [ref=f7e405]
+            - generic [ref=f7e408]: Completed
+            - paragraph [ref=f7e411]: Comprehensive multi-board flight computer system and ground station for advanced rocketry telemetry. Implemented dual-board architecture with multiple sensors and real-time communication protocols using LoRa radio.
+            - generic [ref=f7e412]:
+              - generic [ref=f7e413]: C++
+              - generic [ref=f7e414]: Embedded
+              - generic [ref=f7e415]: RTOS
+        - generic [ref=f7e419]:
+          - heading "Jobtron" [level=3] [ref=f7e421]
+          - generic [ref=f7e424]: Completed
+          - paragraph [ref=f7e427]: MCP server + Web app that allows users to autofill online job applications by extracting application information and using AI agents to fill them with resume information. Streamlines the job application process significantly.
+          - generic [ref=f7e428]:
+            - generic [ref=f7e429]: AI
+            - generic [ref=f7e430]: JavaScript
+            - generic [ref=f7e431]: MCP
+        - generic [ref=f7e432]:
+          - generic [ref=f7e434]:
+            - img "SARE CLINOSTAT PROJECT" [ref=f7e435]
+            - button "Open SARE CLINOSTAT PROJECT media" [ref=f7e436]
+          - generic [ref=f7e437]:
+            - heading "SARE CLINOSTAT PROJECT" [level=3] [ref=f7e439]
+            - generic [ref=f7e442]: Completed
+            - paragraph [ref=f7e445]: Led development of a high-precision clinostat control system, integrating Rust, React, and ESP32-based hardware. Selected as a finalist in the 2025 NASA MINDS competition. Architected Tauri 2.0 desktop app for real-time motor control.
+            - generic [ref=f7e446]:
+              - generic [ref=f7e447]: Rust
+              - generic [ref=f7e448]: Tauri
+              - generic [ref=f7e449]: Tailwind
+              - generic [ref=f7e450]: JavaScript
+              - generic [ref=f7e451]: React
+            - link "View on GitHub" [ref=f7e453] [cursor=pointer]:
+              - /url: https://github.com/Lmx154/clinostat
+    - generic [ref=f7e457]:
+      - generic [ref=f7e459]:
+        - generic [ref=f7e460]: 03 /
+        - heading "ABOUT ME" [level=2] [ref=f7e461]
+      - generic [ref=f7e464]:
+        - generic [ref=f7e466]:
+          - figure "Luis Martinez Robotics & Software Engineer" [ref=f7e467]:
+            - 'button "Open image: Luis Martinez" [ref=f7e469]'
+            - generic [ref=f7e470]:
+              - generic [ref=f7e471]: Luis Martinez
+              - generic [ref=f7e472]: Robotics & Software Engineer
+          - generic [ref=f7e473]:
+            - generic [ref=f7e478]:
+              - heading "Productive" [level=3] [ref=f7e479]
+              - paragraph [ref=f7e480]: Consistently delivering high-quality code and innovative solutions
+            - generic [ref=f7e485]:
+              - heading "Self-Learner" [level=3] [ref=f7e486]
+              - paragraph [ref=f7e487]: Continuously exploring new technologies and expanding skill sets
+            - generic [ref=f7e492]:
+              - heading "Problem Solver" [level=3] [ref=f7e493]
+              - paragraph [ref=f7e494]: Tackling complex challenges with creative and efficient solutions
+        - generic [ref=f7e495]:
+          - generic [ref=f7e496]:
+            - paragraph [ref=f7e497]: I'm Luis Martinez, a robotics and software engineer based in Weslaco, Texas. I build flight software, embedded hardware, and the guidance, navigation and control systems that tie them together. I hold a B.S. in Computer Science from the University of Texas Rio Grande Valley (UTRGV).
+            - paragraph [ref=f7e498]: I got into programming by modding games and building simple websites, and that curiosity never left. Before UTRGV, I earned an Associate's degree in Computer Science from South Texas College and worked as an IT analyst, supporting networks, hardware and backups for small businesses.
+            - paragraph [ref=f7e499]: From 2024 to 2026 I was the Avionics Lead for Rocket Launchers at UTRGV, leading the team's flight software, embedded hardware, telemetry and integration work. I developed the MARV flight computer, worked with the structures, propulsion and recovery leads to bring our avionics to flight readiness, and took our systems to competitions including Lone Star and IREC. Along the way I competed in hackathons and made a habit of learning by building.
+            - paragraph [ref=f7e500]: "Today I'm focused on flight control systems and localization for robotics, including the next revision of MARV. This site documents that work: the setbacks as much as the successes."
+          - blockquote [ref=f7e501]:
+            - paragraph [ref=f7e502]: “Earth is the cradle of humanity, but one cannot live in the cradle forever.”
+            - generic [ref=f7e503]: — Konstantin Tsiolkovsky
+          - generic [ref=f7e504]:
+            - generic [ref=f7e505]:
+              - heading "EDUCATION" [level=4] [ref=f7e506]
+              - paragraph [ref=f7e508]: B.S. Computer Science
+              - paragraph [ref=f7e509]: UT Rio Grande Valley, 2026
+              - paragraph [ref=f7e510]: Associate's, South Texas College
+            - generic [ref=f7e511]:
+              - heading "FOCUS" [level=4] [ref=f7e512]
+              - paragraph [ref=f7e514]: Robotics
+              - paragraph [ref=f7e515]: Embedded Systems
+              - paragraph [ref=f7e516]: Aerospace Technology
+      - link "Resume PDF · Download" [ref=f7e518] [cursor=pointer]:
+        - /url: /resume.pdf
+        - generic [ref=f7e522]:
+          - generic [ref=f7e523]: Resume
+          - generic [ref=f7e524]: PDF · Download
+    - generic [ref=f7e528]:
+      - generic [ref=f7e529]:
+        - generic [ref=f7e530]:
+          - generic [ref=f7e531]: 04 /
+          - heading "Community Involvement" [level=2] [ref=f7e532]
+        - generic [ref=f7e533]: 12 missions
+      - paragraph [ref=f7e537]: As Avionics Lead for Rocket Launchers at UTRGV, I took part in rocketry competitions, design reviews, hackathons and industry visits. These experiences sharpened my technical skills and taught me how to lead and collaborate across a multidisciplinary team.
+      - generic [ref=f7e538]:
+        - generic [ref=f7e539]:
+          - button [ref=f7e541] [cursor=pointer]:
+            - img "IREC 2026 team photo with ITZAMNA" [ref=f7e542]
+          - generic [ref=f7e543]:
+            - generic [ref=f7e544]: 01 / 12
+            - heading "IREC 2026" [level=3] [ref=f7e545]
+            - paragraph [ref=f7e546]: The team with ITZAMNA, our rocket for IREC 2026
+        - generic [ref=f7e547]:
+          - button [ref=f7e549] [cursor=pointer]:
+            - img "Rocket Launchers team holding the rocket at Lone Star 2026" [ref=f7e550]
+          - generic [ref=f7e551]:
+            - generic [ref=f7e552]: 02 / 12
+            - heading "Lone Star 2026" [level=3] [ref=f7e553]
+            - paragraph [ref=f7e554]: The Rocket Launchers team at the Lone Star Cup
+        - generic [ref=f7e555]:
+          - button [ref=f7e557] [cursor=pointer]
+          - generic [ref=f7e558]:
+            - generic [ref=f7e559]: 03 / 12
+            - heading "Itzamna Launch" [level=3] [ref=f7e560]
+            - paragraph [ref=f7e561]: Itzamna ripping through the sky at Lone Star 2026
+        - generic [ref=f7e562]:
+          - button [ref=f7e564] [cursor=pointer]:
+            - img "Avionics team members preparing hardware at Lone Star 2026" [ref=f7e565]
+          - generic [ref=f7e566]:
+            - generic [ref=f7e567]: 04 / 12
+            - 'heading "Lone Star 2026: Avionics" [level=3] [ref=f7e568]'
+            - paragraph [ref=f7e569]: The avionics team getting hardware ready for launch
+        - generic [ref=f7e570]:
+          - button [ref=f7e572] [cursor=pointer]:
+            - img "Luis presenting avionics at the preliminary design review" [ref=f7e573]
+          - generic [ref=f7e574]:
+            - generic [ref=f7e575]: 05 / 12
+            - heading "Preliminary Design Review" [level=3] [ref=f7e576]
+            - paragraph [ref=f7e577]: Presenting the avionics design as Avionics Lead
+        - generic [ref=f7e578]:
+          - button [ref=f7e580] [cursor=pointer]:
+            - img "Rocket Launchers 2026 team at the preliminary design review" [ref=f7e581]
+          - generic [ref=f7e582]:
+            - generic [ref=f7e583]: 06 / 12
+            - heading "Preliminary Design Review" [level=3] [ref=f7e584]
+            - paragraph [ref=f7e585]: The Rocket Launchers 2026 team after the review
+        - generic [ref=f7e586]:
+          - button [ref=f7e588] [cursor=pointer]:
+            - img "Disparado at IREC in Midland, TX" [ref=f7e589]
+          - generic [ref=f7e590]:
+            - generic [ref=f7e591]: 07 / 12
+            - heading "Disparado at IREC 2025" [level=3] [ref=f7e592]
+            - paragraph [ref=f7e593]: Disparado at the IREC 2025 launch site in Midland, TX
+        - generic [ref=f7e594]:
+          - button [ref=f7e596] [cursor=pointer]:
+            - img "Disparado Launch at Lone Star 2025" [ref=f7e597]
+          - generic [ref=f7e598]:
+            - generic [ref=f7e599]: 08 / 12
+            - heading "Disparado Launch" [level=3] [ref=f7e600]
+            - paragraph [ref=f7e601]: Disparado lifting off at Lone Star 2025
+        - generic [ref=f7e602]:
+          - button [ref=f7e604] [cursor=pointer]:
+            - img "Lone Star 2025" [ref=f7e605]
+          - generic [ref=f7e606]:
+            - generic [ref=f7e607]: 09 / 12
+            - heading "Lone Star 2025" [level=3] [ref=f7e608]
+            - paragraph [ref=f7e609]: Competing at the Lone Star Cup
+        - generic [ref=f7e610]:
+          - button [ref=f7e612] [cursor=pointer]:
+            - img "2024-2025 Avionics Team" [ref=f7e613]
+          - generic [ref=f7e614]:
+            - generic [ref=f7e615]: 10 / 12
+            - heading "2024–2025 Avionics Team" [level=3] [ref=f7e616]
+            - paragraph [ref=f7e617]: The 2024–2025 avionics team with Disparado
+        - generic [ref=f7e618]:
+          - button [ref=f7e620] [cursor=pointer]:
+            - img "SpaceX Starbase Visit" [ref=f7e621]
+          - generic [ref=f7e622]:
+            - generic [ref=f7e623]: 11 / 12
+            - heading "SpaceX Starbase Visit" [level=3] [ref=f7e624]
+            - paragraph [ref=f7e625]: A visit to SpaceX's Starbase facility
+        - generic [ref=f7e626]:
+          - button [ref=f7e628] [cursor=pointer]:
+            - img "Frontera Hacks 2024" [ref=f7e629]
+          - generic [ref=f7e630]:
+            - generic [ref=f7e631]: 12 / 12
+            - heading "Frontera Hacks 2024" [level=3] [ref=f7e632]
+            - paragraph [ref=f7e633]: Competing in UTRGV's annual hackathon
+  - contentinfo [ref=f7e634]:
+    - generic [ref=f7e635]:
+      - generic [ref=f7e636]:
+        - generic [ref=f7e637]:
+          - heading "01 / Navigate" [level=3] [ref=f7e638]
+          - list [ref=f7e639]:
+            - listitem [ref=f7e640]:
+              - link "About" [ref=f7e641] [cursor=pointer]:
+                - /url: "#about"
+                - text: About
+                - generic [aria-hidden] [ref=f7e642]: →
+            - listitem [ref=f7e643]:
+              - link "Gallery" [ref=f7e644] [cursor=pointer]:
+                - /url: "#gallery"
+                - text: Gallery
+                - generic [aria-hidden] [ref=f7e645]: →
+            - listitem [ref=f7e646]:
+              - link "Projects" [ref=f7e647] [cursor=pointer]:
+                - /url: "#projects"
+                - text: Projects
+                - generic [aria-hidden] [ref=f7e648]: →
+            - listitem [ref=f7e649]:
+              - link "Blog" [ref=f7e650] [cursor=pointer]:
+                - /url: "#blog"
+                - text: Blog
+                - generic [aria-hidden] [ref=f7e651]: →
+        - generic [ref=f7e652]:
+          - heading "02 / External" [level=3] [ref=f7e653]
+          - list [ref=f7e654]:
+            - listitem [ref=f7e655]:
+              - link "GitHub" [ref=f7e656] [cursor=pointer]:
+                - /url: https://github.com/Lmx154
+                - text: GitHub
+                - generic [aria-hidden] [ref=f7e657]: ↗
+            - listitem [ref=f7e658]:
+              - link "LinkedIn" [ref=f7e659] [cursor=pointer]:
+                - /url: https://www.linkedin.com/in/luismtz-2b54f/
+                - text: LinkedIn
+                - generic [aria-hidden] [ref=f7e660]: ↗
+            - listitem [ref=f7e661]:
+              - link "X (Twitter)" [ref=f7e662] [cursor=pointer]:
+                - /url: https://x.com/Lmx154
+                - text: X (Twitter)
+                - generic [aria-hidden] [ref=f7e663]: ↗
+        - generic [ref=f7e664]:
+          - heading "03 / Credits" [level=3] [ref=f7e665]
+          - paragraph [ref=f7e666]: © 2026 Luis Martinez
+          - paragraph [ref=f7e667]: All rights reserved.
+      - generic [ref=f7e668]:
+        - paragraph [ref=f7e669]: End of transmission
+        - button "Return to orbit" [ref=f7e672] [cursor=pointer]:
+          - text: Return to orbit
+          - generic [aria-hidden] [ref=f7e673]: ↑

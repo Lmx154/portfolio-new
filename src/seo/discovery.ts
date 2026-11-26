@@ -1,4 +1,4 @@
-import type { About, BlogPost, GalleryItem, Project, Site } from '../content/schema';
+import { compareBlogPostOrder, type About, type BlogPost, type GalleryItem, type Project, type Site } from '../content/schema';
 import { about } from '../data/about';
 import { blogPosts } from '../data/blogPosts';
 import { galleryItems } from '../data/gallery';
@@ -54,7 +54,7 @@ const absolute = (href: string) => (/^[a-z][a-z0-9+.-]*:/i.test(href) ? href : `
 function publishedPosts(posts: readonly BlogPost[]): BlogPost[] {
   return posts
     .filter((post) => post.status === 'published')
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '') || a.id.localeCompare(b.id));
+    .sort((a, b) => compareBlogPostOrder(a, b) || a.id.localeCompare(b.id));
 }
 
 function siteLinks(data: DiscoveryData): { label: string; url: string }[] {

@@ -254,6 +254,11 @@
       "id": "blk_dc_outro",
       "type": "paragraph",
       "text": "Going from a box of carbon plates to a CAD model I can design against, and a simulation built from the same numbers, took a scanner, calipers and a scale on my end, and computer vision, parametric CAD and simulation tooling on Claude Code's. Thanks for reading!"
+    },
+    {
+      "id": "blk_dc_flight_followup",
+      "type": "paragraph",
+      "text": "**Flight test follow-up.** The quad weighed 914 g in its flown configuration. I carried the measured weight into the simulation and used the first flight logs to refine the thrust model. [MARV V2 Takes Flight](/blog/marv-v2-flight-stack) picks up from the CAD and scale work, and [From Position Hold to Waypoint Flight](/blog/marv-v2-waypoint-missions) follows the same quad into guidance testing."
     }
   ]
 }

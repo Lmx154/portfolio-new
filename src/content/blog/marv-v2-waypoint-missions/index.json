@@ -1,0 +1,163 @@
+{
+  "type": "blog",
+  "id": "marv-v2-waypoint-missions",
+  "title": "MARV V2 From Position Hold to Waypoint Flight",
+  "status": "published",
+  "date": "2026-11-25",
+  "sameDayOrder": 1,
+  "displayDate": "November 25, 2026",
+  "excerpt": "From holding one point to flying a route. I worked through mission switching, route tests, and emergency landing, and used the simulator and flight logs to improve the climb.",
+  "readTime": "5 min read",
+  "tags": [
+    "Avionics",
+    "Flight Testing",
+    "Guidance",
+    "Ground Control"
+  ],
+  "coverImage": "/content/blog/marv-v2-flight-stack/assets/gnc-test-setup.webp",
+  "blocks": [
+    {
+      "id": "blk_marv_01",
+      "type": "paragraph",
+      "text": "After [the first hovers and the jump to ESKF](/blog/marv-v2-flight-stack), I could fly to a spot, let the sticks center, and watch MARV hold position. I was excited to try a route next. Position hold gave me the estimate and controller I needed, but following waypoints brought a different set of decisions. How should the quad get moving? When should it switch to the next leg? What should happen if I wanted to take over halfway through?"
+    },
+    {
+      "id": "blk_marv_series",
+      "type": "paragraph",
+      "text": "[Firmware bring-up](/blog/marv-v2-firmware-bring-up) · [First flight and position hold](/blog/marv-v2-flight-stack) · Waypoint flight"
+    },
+    {
+      "id": "blk_marv_02",
+      "type": "image",
+      "src": "/content/blog/marv-v2-flight-stack/assets/gnc-test-setup.webp",
+      "alt": "Laptop and radio transmitter set up beside a grassy flight test area",
+      "caption": "The field setup for guidance, navigation, and control tests."
+    },
+    {
+      "id": "blk_marv_03",
+      "type": "heading",
+      "level": 2,
+      "text": "Handing control to the mission"
+    },
+    {
+      "id": "blk_marv_04",
+      "type": "paragraph",
+      "text": "I reused something that had worked for the ESKF. I ran guidance in shadow so I could inspect the targets it computed before using them to steer. I also added mission upload to the ground station. Once the board had a route, the firmware could decide when the mission should take control and when to hand it back to the pilot or position hold."
+    },
+    {
+      "id": "blk_marv_relink",
+      "type": "paragraph",
+      "text": "I considered switching the transmitter between its CRSF and MAVLink models during flight. On the props-off bench it took 3.8 to 9.1 seconds to get the link back across three tries. I went with a dedicated mission switch and kept the receiver on one model. That gave me a way to start a route or take over while keeping the same link up."
+    },
+    {
+      "id": "blk_marv_05",
+      "type": "paragraph",
+      "text": "I ran 444 mission-switch cases in simulation and 540 regression cases on the existing CRSF behavior. Then I worked through the switch states on the real board with the props off. I could see it accept Start, enter AUTO and RETURN, and give control back to the pilot. The radio and calibration work from [firmware bring-up](/blog/marv-v2-firmware-bring-up) paid off here. I already had a way to see the stick reports and check what the firmware did with them."
+    },
+    {
+      "id": "blk_marv_06",
+      "type": "heading",
+      "level": 2,
+      "text": "What the first routes showed"
+    },
+    {
+      "id": "blk_marv_07",
+      "type": "paragraph",
+      "text": "Seeing the quad track a straight leg on its own was a big step. On November 25, it stayed within 0.75 m of those legs. One of the first four missions completed, while the other three switched to HOLD mid-leg. The onboard logs showed that the sticks were still coming through and the quad hadn't reached the final waypoint. I needed the laptop recording to see what else was happening."
+    },
+    {
+      "id": "blk_marv_08",
+      "type": "video",
+      "src": "/content/blog/marv-v2-flight-stack/videos/guidance-test.mp4",
+      "caption": "Waypoint-guidance field test.",
+      "controls": true,
+      "muted": true
+    },
+    {
+      "id": "blk_marv_stations",
+      "type": "paragraph",
+      "text": "The laptop and onboard logs showed two sides of the link. The laptop kept sending its heartbeat while the aircraft stopped receiving station traffic for several seconds. Stick reports kept arriving through the same window. Comparing the recordings narrowed the issue to the path through the transmitter's Wi-Fi backpack and module. The logs I originally wanted for tuning were just as useful for debugging the radio setup."
+    },
+    {
+      "id": "blk_marv_turns",
+      "type": "paragraph",
+      "text": "The straight segments gave me a baseline for working on corners. The quad sometimes carried its momentum past the waypoint when it switched legs at speed. In one log it passed the moving target, the target stopped advancing, and the quad braked and reversed. That gave me a specific case to work on in guidance instead of adjusting the position controller that was already tracking the straight legs well."
+    },
+    {
+      "id": "blk_marv_climb",
+      "type": "heading",
+      "level": 2,
+      "text": "A fix I could follow from the simulator to the battery"
+    },
+    {
+      "id": "blk_marv_09",
+      "type": "paragraph",
+      "text": "The start of the mission was rough in a different way. The vertical target moved up abruptly and the aircraft hit its thrust limit. The flight log showed the current spike and the battery voltage sag. I took that case back into simulation and ramped up the vertical reference. The initial clamp went away, but the first version overshot more at the top of the climb. Adding acceleration feed-forward reduced the overshoot. I had to look at both ends of the maneuver before I was happy taking that version back out."
+    },
+    {
+      "id": "blk_marv_349",
+      "type": "paragraph",
+      "text": "In field log 349, the initial clamp was gone. The peak current at the start of the maneuver was 15–17 A compared with 31–45 A in the earlier runs, and the battery sag was smaller. All four missions completed in that log. It was satisfying to take a problem I could see in the battery data, reproduce it in the simulator, and see the improvement on the quad. For the corners, I planned to fly the same rectangle in both directions at one height to see how much the wind mattered."
+    },
+    {
+      "id": "blk_marv_10",
+      "type": "video",
+      "src": "/content/blog/marv-v2-flight-stack/videos/guidance-test-2.mp4",
+      "caption": "A second waypoint-guidance field run.",
+      "controls": true,
+      "muted": true
+    },
+    {
+      "id": "blk_marv_11",
+      "type": "heading",
+      "level": 2,
+      "text": "Testing the way back down"
+    },
+    {
+      "id": "blk_marv_switch",
+      "type": "paragraph",
+      "text": "Earlier in testing I accidentally flicked the arm switch during a hover. The motors stopped and the quad dropped onto its landing legs. It came through without anything breaking that time. The event made it much harder to think of stopping the motors as a generic response to trouble. I wanted the firmware to try to descend when it lost the input it was relying on. The pilot's arm switch still meant an immediate stop, and it took me another field incident to see how easy it was to hit it while moving between mission controls."
+    },
+    {
+      "id": "blk_marv_12",
+      "type": "paragraph",
+      "text": "I also ran an emergency-landing exercise. In one logged link-loss event, the quad entered HOLD, then RETURN, then LAND. It was already within 2 m of home, so the flight gave me a chance to look at the descent and touchdown. A return climb and transit from farther away were still separate tests."
+    },
+    {
+      "id": "blk_marv_13",
+      "type": "video",
+      "src": "/content/blog/marv-v2-flight-stack/videos/emergency-landing-test.mp4",
+      "caption": "Emergency-landing field test.",
+      "controls": true,
+      "muted": true
+    },
+    {
+      "id": "blk_marv_14",
+      "type": "paragraph",
+      "text": "Watching MARV finish a route made the earlier work feel connected. The radio and ground station gave me a way to start the mission and take over. The measured airframe gave the simulator a useful starting point, and the flight logs helped me bring it closer to the real quad. Each step gave me something I could reuse on the next one. That's what I'm excited to carry into the next iteration."
+    },
+    {
+      "id": "blk_marv_next",
+      "type": "heading",
+      "level": 2,
+      "text": "What I’m working on next"
+    },
+    {
+      "id": "blk_marv_teaser",
+      "type": "paragraph",
+      "text": "The next iteration adds LiDAR, a Raspberry Pi 5, and computer vision. I'm starting with how the hardware fits on the quad. Now that MARV can hold a point and follow a route, I want to see what it can do with information about what's around it."
+    },
+    {
+      "id": "blk_marv_next_cad",
+      "type": "image",
+      "src": "assets/marv-lidar-pi5-cad.webp",
+      "alt": "CAD rendering of the MARV quad with a raised electronics stack and a cylindrical LiDAR unit at the top",
+      "caption": "CAD preview of the next MARV iteration with LiDAR, a Raspberry Pi 5, and computer vision."
+    },
+    {
+      "id": "blk_marv_agent_tools",
+      "type": "paragraph",
+      "text": "I'm also planning to build tools in the ground control station that software agents can use. I'd like an agent to help me work through a calibration, compare flight logs when I'm tuning, or trace a problem across the sensors, radio, and firmware. Over time I'd like those tools to cover the whole MARV avionics suite. Having that help inside the GCS would save a lot of time piecing together what happened across different tabs, logs, and tools."
+    }
+  ]
+}

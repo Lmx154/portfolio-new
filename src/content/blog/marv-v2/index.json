@@ -5,7 +5,7 @@
   "status": "published",
   "date": "2026-09-19",
   "displayDate": "September 19, 2026",
-  "excerpt": "What a season of flying MARV V1 taught me, how those lessons shaped the second revision of the flight computer, and how Rev 1 made it to manufacturing.",
+  "excerpt": "What rocket telemetry and bench testing on MARV V1 taught me, how those lessons shaped V2, and how the new board made it to manufacturing.",
   "readTime": "6 min read",
   "tags": [
     "Avionics",
@@ -30,7 +30,7 @@
     {
       "id": "blk_jxctzys",
       "type": "paragraph",
-      "text": "After flying MARV V1 through the IREC 2026 season, a handful of problems stood out. They spanned firmware, power and thermal design, and each one hurt performance or reliability enough that it had to be fixed in the next revision."
+      "text": "MARV V1 handled rocket telemetry during the IREC 2026 season. On the quad, I got as far as spinning the motors on the bench. Those two setups exposed issues in the firmware, power, and thermal design that I wanted to fix before taking the next board into flight control."
     },
     {
       "id": "blk_h1intrp",

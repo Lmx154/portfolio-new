@@ -1,4 +1,4 @@
-import { BlogPostSchema, type BlogPost } from '../content/schema';
+import { BlogPostSchema, compareBlogPostOrder, type BlogPost } from '../content/schema';
 
 export type { BlogPost };
 
@@ -58,7 +58,6 @@ for (const [path, mod] of Object.entries(modules)) {
 // Published-only in production; keep drafts visible during local development.
 const visible = import.meta.env.PROD ? loaded.filter((p) => p.status === 'published') : loaded;
 
-// Newest first by ISO date (lexical sort is correct for YYYY-MM-DD).
-visible.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+visible.sort((a, b) => compareBlogPostOrder(a, b) || a.id.localeCompare(b.id));
 
 export const blogPosts: BlogPost[] = visible;

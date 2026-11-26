@@ -148,12 +148,17 @@ export const QUAD_FRAG = /* glsl */ `
   }
 `;
 
-// ---- Star shader (fades + min-size, no sub-pixel glitter) -------------------
+// ---- Star shader (pixel-integrated light profile for stable motion) --------
 export const STAR_VERT = /* glsl */ `
   attribute float aSize;
   attribute vec3 aColor;
   varying vec3 vColor;
   varying float vAlpha;
+  #ifdef STAR_PIXEL_FILTER
+    varying float vPointSize;
+    varying float vSigma;
+    varying float vFlux;
+  #endif
   uniform float uSizeScale;
   uniform float uPixelRatio;
   uniform float uMinPx;
@@ -181,18 +186,39 @@ export const STAR_VERT = /* glsl */ `
     vAlpha = fade * (0.15 + 0.85 * small) * uWarpFade;
     vAlpha *= uOpacity;
     gl_PointSize = sizeCss * uPixelRatio;
+    #ifdef STAR_PIXEL_FILTER
+      // Cover the light profile plus a pixel of padding on each side. Small
+      // stars retain their total light as it moves between neighboring pixels.
+      float diameter = sizeCss * uPixelRatio;
+      vSigma = max(diameter * 0.16, 0.5);
+      vPointSize = 6.0 * vSigma + 2.0;
+      vFlux = vAlpha * diameter * diameter * 0.15;
+      gl_PointSize = vPointSize;
+    #endif
   }
 `;
 
 export const STAR_FRAG = /* glsl */ `
-  precision mediump float;
+  precision highp float;
   varying vec3 vColor;
-  varying float vAlpha;
+  varying float vPointSize;
+  varying float vSigma;
+  varying float vFlux;
+
+  // Abramowitz-Stegun erf approximation, evaluated for four pixel edges.
+  vec4 erfApprox(vec4 x) {
+    vec4 t = 1.0 / (1.0 + 0.3275911 * abs(x));
+    vec4 polynomial = (((((1.061405429 * t - 1.453152027) * t)
+      + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t;
+    return sign(x) * (1.0 - polynomial * exp(-x * x));
+  }
+
   void main() {
-    float d = length(gl_PointCoord - 0.5);
-    if (d > 0.5) discard;
-    float core = 1.0 - smoothstep(0.0, 0.5, d);
-    gl_FragColor = vec4(vColor, pow(core, 1.7) * vAlpha);
+    vec2 center = (gl_PointCoord - 0.5) * vPointSize;
+    vec4 edges = vec4(center - 0.5, center + 0.5) / (1.41421356237 * vSigma);
+    vec4 integral = erfApprox(edges);
+    vec2 coverage = 0.5 * (integral.zw - integral.xy);
+    gl_FragColor = vec4(vColor, coverage.x * coverage.y * vFlux);
   }
 `;
 
@@ -271,6 +297,7 @@ export function makeStarMaterial(opts: {
   fadeOut: number;
 }): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
+    defines: { STAR_PIXEL_FILTER: 1 },
     uniforms: {
       uSizeScale: { value: opts.sizeScale },
       uPixelRatio: { value: opts.pixelRatio },

@@ -285,7 +285,7 @@
     {
       "id": "blk_bu_next_p2",
       "type": "paragraph",
-      "text": "The RP2354B has two cores, and I'm giving them different jobs:"
+      "text": "At this stage, my proposed split for the two RP2354B cores looked like this."
     },
     {
       "id": "blk_bu_next_list",
@@ -305,6 +305,11 @@
       "id": "blk_bu_outro",
       "type": "paragraph",
       "text": "The schematic and board are in the [MARV-V2-PCB repository](https://github.com/Lmx154/MARV-V2-PCB), the firmware is in [MARV-FC](https://github.com/Lmx154/MARV-FC), the ground station is in [MARV-GCS](https://github.com/Lmx154/MARV-GCS), and each driver has its own repository, linked above. Thanks for reading!"
+    },
+    {
+      "id": "blk_bu_flight_followup",
+      "type": "paragraph",
+      "text": "**Flight test follow-up.** The firmware that flew used Core 1 for the gyro-to-motor path and Core 0 for I/O. I explain the final assignments and why they matter in [Firmware Bring-Up Before Flight](/blog/marv-v2-firmware-bring-up). Rev 1 went on to fly [outdoor hovers and position hold](/blog/marv-v2-flight-stack), then [waypoint routes](/blog/marv-v2-waypoint-missions)."
     }
   ]
 }

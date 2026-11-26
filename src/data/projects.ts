@@ -31,6 +31,7 @@ export const projects: Project[] = loaded;
 export function projectStatusColor(status: string): string {
   switch (status.trim().toLowerCase()) {
     case 'completed':
+    case 'flight tested':
       return 'bg-green-600';
     case 'in progress':
       return 'bg-yellow-600';

@@ -1,0 +1,171 @@
+{
+  "type": "blog",
+  "id": "marv-v2-flight-stack",
+  "title": "MARV V2 Takes Flight",
+  "status": "published",
+  "date": "2026-11-25",
+  "sameDayOrder": 2,
+  "displayDate": "November 25, 2026",
+  "excerpt": "The measured airframe, simulation, and bench tests helped me decide when to fly. The first hovers felt great and gave me data for the move from Mahony to ESKF and position hold.",
+  "readTime": "7 min read",
+  "tags": [
+    "Avionics",
+    "Flight Testing",
+    "Simulation",
+    "State Estimation"
+  ],
+  "coverImage": "/content/blog/marv-v2-flight-stack/assets/dev-setup.webp",
+  "blocks": [
+    {
+      "id": "blk_marv_01",
+      "type": "paragraph",
+      "text": "I'd already [flown this quad with a MicoAir743v2 running ArduPilot](/blog/getting-a-better-understanding-of-flight-controllers-with-my-first-drone). MARV V1 had handled rocket telemetry and spun the quad's motors on the bench. This was the first time I was taking off with MARV itself controlling the quad. I was excited to see it fly, and I was honestly scared to put the props on. The quad cost me a lot of money, and I didn't want to break it over something I'd missed. The bench work and simulation gave me a reason to try. I still had to raise the throttle and see how the real quad responded."
+    },
+    {
+      "id": "blk_marv_series",
+      "type": "paragraph",
+      "text": "[Firmware bring-up](/blog/marv-v2-firmware-bring-up) · First flight and position hold · [Waypoint flight](/blog/marv-v2-waypoint-missions)"
+    },
+    {
+      "id": "blk_marv_bench",
+      "type": "paragraph",
+      "text": "By the end of [firmware bring-up](/blog/marv-v2-firmware-bring-up), I could read the IMUs, send commands through the radio, spin a motor on the bench, and record what the board did. The next step was to see whether the controller could put those pieces together fast enough to keep the quad upright. I already had the beginnings of a model for that from the work I'd done on the airframe."
+    },
+    {
+      "id": "blk_marv_02",
+      "type": "heading",
+      "level": 2,
+      "text": "Why I spent so much time with a scale"
+    },
+    {
+      "id": "blk_marv_03",
+      "type": "paragraph",
+      "text": "Earlier, I had [taken the quad apart to scan, measure, and weigh the parts](/blog/drone-cad-and-sim). At the time I needed geometry for mounts and spacers. It was easy to see the value when I could print a part and put it on the frame. The scale work paid off later. Where I put the battery mattered as much as knowing its weight. In CAD I could see what raising the battery with a spacer did to the center of gravity. I could also use the mass distribution to estimate how much torque it would take to start or stop a rotation."
+    },
+    {
+      "id": "blk_marv_04",
+      "type": "image",
+      "src": "assets/basket-proto.webp",
+      "alt": "Close-up of the prototype electronics basket against the drone frame",
+      "caption": "Checking the electronics basket against the frame."
+    },
+    {
+      "id": "blk_marv_mass",
+      "type": "paragraph",
+      "text": "The original CAD estimate was 748.7 g, with more than 90 percent of that estimate coming from pieces I could put on the scale. The later all-up measurement, with the setup I actually flew, was 914 g. That gap was big enough to matter. I updated the vehicle card with the measured weight and used the first flight data to fit the motor and thrust model again. Having a model with sources for the numbers made it possible to see which ones needed another look."
+    },
+    {
+      "id": "blk_marv_05",
+      "type": "paragraph",
+      "text": "MARV-sim used that vehicle card for things like the motor positions, spin directions, and mixer. It also ran the same estimator and controller code that would be on the board. The simulated vehicle could tell me how it was truly moving while the firmware had to guess from simulated sensor readings. I could compare those two answers, vary the thrust or inertia, and replay a case with the same noise seed. The card hash let me check that I was testing the configuration that the firmware actually expected."
+    },
+    {
+      "id": "blk_marv_06",
+      "type": "heading",
+      "level": 2,
+      "text": "Deciding when I was willing to put the props on"
+    },
+    {
+      "id": "blk_marv_07",
+      "type": "paragraph",
+      "text": "I made myself a rule. The quad had to reliably throttle up, take off, fly, throttle down, and land in sim before I tried it with props. A hover scenario alone would have let me skip the moments I was most nervous about. The simulator needed a ground plane and a way to see what the controller did while the frame was still on it, when the vehicle lifted off, and when it touched back down."
+    },
+    {
+      "id": "blk_marv_matrix",
+      "type": "paragraph",
+      "text": "The combined takeoff and landing gate passed 23 checks, and a smaller variation sweep passed all 20 cases. The broader matrix, with 270 combinations of throttle mapping, wind, ground conditions, and sensor errors, passed 106. Those results helped me decide what I was willing to try. I had a much better case for a first hop off level ground than I did for an awkward takeoff on a slope. I could go back through the failures with the same inputs until I understood what each test was asking."
+    },
+    {
+      "id": "blk_marv_08",
+      "type": "paragraph",
+      "text": "The props-off checks covered things I could only see on the physical board. During one check I took the white LED as a cue to arm, and the motors spun before the boot checks were done. I changed the firmware to refuse arming until boot finished. Between the sim and the bench, I could exercise both the controller and the actual sequence I'd go through with the transmitter in my hands."
+    },
+    {
+      "id": "blk_marv_first_hover",
+      "type": "heading",
+      "level": 2,
+      "text": "The first outdoor hovers"
+    },
+    {
+      "id": "blk_marv_tilt",
+      "type": "paragraph",
+      "text": "For the first flights I used Mahony to estimate which way the quad was tilted. The controller turned my stick requests and that estimate into corrections, and the mixer divided those corrections among the four motors. I saw the aircraft lean back during the first attempt and moved the battery forward. That was the explanation I could see from where I was standing. The first log stayed entirely on the ground. The next one had five outdoor hovers with about 57 seconds in the air."
+    },
+    {
+      "id": "blk_marv_09",
+      "type": "video",
+      "src": "videos/mahony-est.mp4",
+      "caption": "Early Mahony attitude-estimation test.",
+      "controls": true,
+      "muted": true
+    },
+    {
+      "id": "blk_marv_10",
+      "type": "paragraph",
+      "text": "Once it lifted, the quad felt snappy and easy to control. I liked how it responded, and getting five hovers out of that session felt like a big win. The logs gave me two useful things to fix for the next round. The motors were turning faster than the model predicted, so it hovered around a third of the way up the stick and kept applying the ground rule through much of the flight. The recording also suggested a different explanation for the lean I'd noticed before takeoff. Motor vibration had biased the accelerometer samples the filter was accepting as gravity, and the controller had responded to the resulting false tilt."
+    },
+    {
+      "id": "blk_marv_replay",
+      "type": "paragraph",
+      "text": "I replayed the recorded ground run to reproduce the tilt drift. Filtering the accelerometer before deciding whether a sample looked like gravity brought the error on that replay from 3.16° down to 0.11°. That was when the logger, the measured airframe, and the simulator started to feel like one project. I could use the flight to improve the motor model and turn a few seconds of sensor data into a test for the next firmware build."
+    },
+    {
+      "id": "blk_marv_11",
+      "type": "heading",
+      "level": 2,
+      "text": "From Mahony to position hold"
+    },
+    {
+      "id": "blk_marv_12",
+      "type": "paragraph",
+      "text": "Mahony let me fly with the sticks because it gave the controller attitude. To hold position I needed the quad to have an idea of where it was, how fast it was moving, and how much its sensors were drifting. An error-state Kalman filter, or ESKF, brought the IMU, barometer, compass, and GNSS into that much larger problem. The measurements arrived at different times, and I had to work out how to tell when one of them was misleading. I ran the new estimator in shadow first. It recorded its answers next to the version that was flying, without using those answers to steer."
+    },
+    {
+      "id": "blk_marv_13",
+      "type": "paragraph",
+      "text": "On the first ESKF2 steering flights, the new filter had 2.31° RMS tilt error on one log against 1.82° from replaying Mahony. I noticed a slow turn with the yaw stick centered and initially attributed it to wind. The log pointed to the estimator's gyro bias. That was also when I found out how much the replay depended on the data before takeoff. Keeping every IMU sample while disarmed, up from every eighth, let the replay start from the same inputs as the board."
+    },
+    {
+      "id": "blk_marv_stack",
+      "type": "paragraph",
+      "text": "The altitude-hold build also crashed at boot twice because the estimator and SD tasks were asking for more stack than the board had available. I went back to the memory budget from bring-up. Restructuring the storage work reduced the stack demand, and startup diagnostics gave me a way to check the margin on later builds."
+    },
+    {
+      "id": "blk_marv_14",
+      "type": "paragraph",
+      "text": "Altitude hold was the point where I could feel what the estimator work was buying me. It was easier to fly than angle mode, and the logs showed 0.09–0.27 m RMS height error. ESKF3 brought GPS and compass into navigation and used an output predictor for steering, while ESKF2 supplied the height to the controller. I moved to the SAM-M10Q GNSS receiver and recalibrated the compass on the assembled quad. In one early flight the filter accepted 20 compass updates and rejected 70. In one after the fresh calibration, it accepted 102 and rejected 3."
+    },
+    {
+      "id": "blk_marv_15",
+      "type": "image",
+      "src": "assets/mag-calib.webp",
+      "alt": "Quad on the ground beside a laptop during magnetometer calibration",
+      "caption": "Calibrating the compass with the quad assembled."
+    },
+    {
+      "id": "blk_marv_16",
+      "type": "paragraph",
+      "text": "The height estimate also benefited from some hands-on work. Pressure readings shifted during fast passes, so I adjusted how much the filter trusted the barometer and tried foam and an enclosure to shield it from airflow. The first position-hold flights were around 0.23–0.31 m in the bring-up notes, and a 73-second hold in wind was around 0.60 m. I could finally let the sticks center and watch the quad hold a spot."
+    },
+    {
+      "id": "blk_marv_17",
+      "type": "image",
+      "src": "assets/baro-foam.webp",
+      "alt": "MARV V2 board with a piece of foam over the barometer area",
+      "caption": "Foam over the barometer on the installed board."
+    },
+    {
+      "id": "blk_marv_18",
+      "type": "video",
+      "src": "videos/eskf3-pos-hold.mp4",
+      "caption": "ESKF3 position-hold test.",
+      "controls": true,
+      "muted": true
+    },
+    {
+      "id": "blk_marv_19",
+      "type": "paragraph",
+      "text": "Getting from a nervous first takeoff to watching the quad hold position was one of my favorite parts of this project. It also gave the guidance work a starting point. In [the waypoint post](/blog/marv-v2-waypoint-missions), I use the same aircraft and test pipeline to see what happens when the target starts moving."
+    }
+  ]
+}

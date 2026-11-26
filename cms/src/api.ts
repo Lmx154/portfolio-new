@@ -3,6 +3,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import type { ZodType } from 'zod';
 import {
   BlogPostSchema,
+  compareBlogPostOrder,
   ProjectSchema,
   GallerySchema,
   GalleryItemSchema,
@@ -712,6 +713,7 @@ export type PostSummary = {
   title: string;
   status: string;
   date?: string;
+  sameDayOrder?: number;
   displayDate?: string;
   tags: string[];
   blockCount: number;
@@ -732,7 +734,7 @@ export async function listPosts(root: string): Promise<PostSummary[]> {
       const parsed = BlogPostSchema.safeParse(raw);
       if (parsed.success) {
         const p = parsed.data;
-        posts.push({ slug: entry.name, title: p.title, status: p.status, date: p.date, displayDate: p.displayDate, tags: p.tags, blockCount: p.blocks.length, valid: true });
+        posts.push({ slug: entry.name, title: p.title, status: p.status, date: p.date, sameDayOrder: p.sameDayOrder, displayDate: p.displayDate, tags: p.tags, blockCount: p.blocks.length, valid: true });
       } else {
         posts.push({ slug: entry.name, title: typeof raw.title === 'string' ? raw.title : entry.name, status: typeof raw.status === 'string' ? raw.status : 'unknown', tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : [], blockCount: Array.isArray(raw.blocks) ? raw.blocks.length : 0, valid: false, error: parsed.error.message });
       }
@@ -740,7 +742,7 @@ export async function listPosts(root: string): Promise<PostSummary[]> {
       posts.push({ slug: entry.name, title: entry.name, status: 'unknown', tags: [], blockCount: 0, valid: false, error: String(err) });
     }
   }
-  posts.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''));
+  posts.sort((a, b) => compareBlogPostOrder(a, b) || a.slug.localeCompare(b.slug));
   return posts;
 }
 
@@ -752,6 +754,29 @@ export async function savePost(root: string, slug: string, data: unknown): Promi
   const validated = BlogPostSchema.parse(data);
   await writeTextFile(join(root, BLOG_REL, slug, 'index.json'), JSON.stringify(validated, null, 2) + '\n');
   return validated;
+}
+
+/** Reorder adjacent posts within a publication date without changing their dates. */
+export async function movePost(root: string, slug: string, direction: -1 | 1): Promise<void> {
+  const posts = await listPosts(root);
+  const index = posts.findIndex((post) => post.slug === slug);
+  const current = posts[index];
+  const adjacent = posts[index + direction];
+  if (!current?.valid || !adjacent?.valid || !current.date || adjacent.date !== current.date) {
+    throw new Error('Posts can be moved within the same publication date.');
+  }
+
+  const sameDate = posts.filter((post) => post.valid && post.date === current.date);
+  const from = sameDate.indexOf(current);
+  sameDate.splice(from, 1);
+  sameDate.splice(from + direction, 0, current);
+
+  for (const [index, summary] of sameDate.entries()) {
+    const sameDayOrder = index + 1;
+    if (summary.sameDayOrder === sameDayOrder) continue;
+    const post = await readPost(root, summary.slug);
+    await savePost(root, summary.slug, { ...post, sameDayOrder });
+  }
 }
 
 export async function createPost(root: string, slug: string, title: string): Promise<BlogPost> {
